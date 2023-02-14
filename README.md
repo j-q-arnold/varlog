@@ -3,10 +3,15 @@
 # Table of Contents
 * [Introduction](#introduction)
 * [`/var/log` Service](#varlog-service)
+  * [Running the Service](#running-the-service)
+* [`/var/log` Client)(#varlog-client)
 * [Logging](#logging)
 * [Design Issues](#design-issues)
   * [Resource Model](#resource-model)
   * [Service API](#service-api)
+  * [Authentication](#authentication)
+  * [Observability](#observability)
+  * [Build & Deployment](#build-deployment)
 
 # Introduction
 This project provides a simple service to retrieve `/var/log` entries.
@@ -31,45 +36,101 @@ as summarized above.
 This section provides the details of each endpoint.
 
 * `read`
-  * Operation.  This endpoint opens a given file within `/var/log`,
+  * Operation.  This endpoint opens a given file within `/var/log` for reading,
     applies an optional text filter to match (or drop) lines,
     and presents the most recent entries first, up to a given count.
   * HTTP Method: `GET`
-  * Path: `/read`
+  * URL Path: `/read`
   * Query Parameters
-    * `name=`_filepath_ \
+    * `name=`_path_ \
       Required.
-      Specifies the file to be read.  The _filepath_ value is used to construct
-      the full path name as `/var/log/`_filepath_.
+      Specifies the file to be read.  The _path_ value is used to construct
+      the full path name as `/var/log/`_path_.
       This "file" must be a regular file---not a directory, a symbolic link,
       nor a special file of any kind.
-      Note that _filepath_ can contain multiple levels, giving full access to the
-      `/var/log` directory tree.  For example, if _filepath_ has the value
+      Note that _path_ can contain multiple levels, giving full access to the
+      `/var/log` directory tree.  For example, if _path_ has the value
       `dir1/dir2/file-abc`, the full path to be read is `/var/log/dir1/dir2/file-abc`.
     * `filter=`_text_ \
-      `filter=-`_text_ \
+      `filter=`_-text_ \
       Optional.
-      If present, specifies an exact text pattern that to apply to lines in the file.
-      The positive form, `filter=`_text_, requires _text_ to be present;
+      If present, specifies an exact text pattern to apply to lines in the file.
+      The positive form, `filter=`_text_, requires _text_ to be present somewhere
+      in the line;
       lines without the pattern are omitted from the response.
-      The negative form, `filter=-`_text_, requires _text_ NOT to be present;
+      The negative form, `filter=`_-text_, requires _text_ NOT to be present;
       lines with the pattern are omitted from the response.
       If this parameter is not present, the filter allows all lines in the file
       to be part of the response.
+      Note that filtering requires an exact match on _text_: no regular
+      expression matching is applied.
     * `count=`_number_ \
       Optional.
       If present, specifies the maximum line count for the response body.
       The _count_ most recent, filtered lines are selected from the file.
       If the `filter` parameter disqualifies a line, it does _not_ count
-      against this `count` limit.
+      against this limit.
       If this parameter is not present, all qualifying lines appear
       in the response body.
+  * Response.
+    The body of the response contains the selected lines, one line from
+    the file per line in the response.
+    As mentioned, the response lines appear most recent first.
   * Error conditions.
     HTTP status codes in the 400 and 500 range indicate error conditions.
     Consult [List of HTTP status codes](
 	    https://en.wikipedia.org/wiki/List_of_HTTP_status_codes
     ) or similar references for details.
 
+* `list`
+  * Operation.  This endpoint examines a given directory
+    (or file) within `/var/log`,
+    finds the file and directory children, gathers certain metadata
+    about the entries, and returns a JSON response to the client.
+  * HTTP Method: `GET`
+  * URL Path: `/list`
+  * Query Parameters
+    * `name=`_path_ \
+      Optional.
+      Specifies the entry to be read.  The _path_ value is used to construct
+      the full path name as `/var/log/`_path_.
+      If this `name` parameter is not present, the base directory
+      `/var/log` is used as the full path name.
+      If the resulting entry is a directory, that directory is read
+      and all qualifying children are added to the response.
+      If the resulting entry is a regular file, that regular file itself
+      appears as the single entry in the response.
+      Note that _path_ can contain multiple levels, giving full access to the
+      `/var/log` directory tree.  For example, if _path_ has the value
+      `dir1/dir2/file-abc`, the full path to be read is `/var/log/dir1/dir2/file-abc`.
+    * `filter=`_text_ \
+      `filter=`_-text_ \
+      Optional.
+      If present, specifies an exact text pattern that to apply to response items.
+      The positive form, `filter=`_text_, requires _text_ to be present
+      in the name of an item;
+      lines without the pattern are omitted from the response.
+      The negative form, `filter=`_-text_, requires _text_ NOT to be present;
+      entries with the pattern are omitted from the response.
+      If this parameter is not present, the filter allows all entries in the
+      directory (file)
+      to be part of the response.
+  * Response.
+    The response is a JSON array of objects with the following name/value pairs.
+    * `"name"`.  This key's value gives the name of the entry, relative to
+      `/var/log`.  For example, if the full path of an entry is
+      `/var/log/dir/file`, the object's value would be `dir/file`.
+    * `"type"`.  This key's value indicates the entry type, as `"file"` for a
+      regular file and `"dir"` for a directory.
+      Other types of entries are omitted from the response.
+    The response array can be empty, such as when a directory has no children.
+  * Error conditions.
+    HTTP status codes in the 400 and 500 range indicate error conditions.
+    Consult [List of HTTP status codes](
+	    https://en.wikipedia.org/wiki/List_of_HTTP_status_codes
+    ) or similar references for details.
+
+# `/var/log` Client
 
 # Logging
 
@@ -80,3 +141,7 @@ This section provides the details of each endpoint.
 ## Service API
 
 ## Authentication
+
+## Observability
+
+## Build & Deployment
