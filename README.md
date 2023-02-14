@@ -145,9 +145,9 @@ machine as the service):
 * `http://localhost:8000/list?filter=syslog` \
   List all the files and directories directly under `/var/log`
   that have `syslog` in the name.
-* `http://localhost:8000/read?name=syslog-saturn-2023-01-31&filter=ERROR&count=100 \
+* `http://localhost:8000/read?name=syslog-saturn-2023-01-31&filter=ERROR&count=100` \
   Read the 100 latest `ERROR` messages from `syslog-saturn-2023-01-31`.
-* `http://localhost:8000/read?name=syslog-saturn-2023-01-31&filter=-INFO&count=100 \
+* `http://localhost:8000/read?name=syslog-saturn-2023-01-31&filter=-INFO&count=100` \
   Similar to the previous example, except this allows lines _except_
   the `INFO` entries.
 
