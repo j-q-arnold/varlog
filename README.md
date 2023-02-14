@@ -12,6 +12,7 @@
   * [Authentication](#authentication)
   * [Observability](#observability)
   * [Build & Deployment](#build-deployment)
+  * [Performance Enhancements](#performanc-enhancements)
 
 # Introduction
 This project provides a simple service to retrieve `/var/log` entries.
@@ -49,29 +50,31 @@ This section provides the details of each endpoint.
       This "file" must be a regular file---not a directory, a symbolic link,
       nor a special file of any kind.
       Note that _path_ can contain multiple levels, giving full access to the
+      The _path_ value may not be empty.
       `/var/log` directory tree.  For example, if _path_ has the value
       `dir1/dir2/file-abc`, the full path to be read is `/var/log/dir1/dir2/file-abc`.
     * `filter=`_text_ \
       `filter=`_-text_ \
       Optional.
-      If present, specifies an exact text pattern to apply to lines in the file.
+      If present and non-empty, specifies an exact text pattern to apply
+      to lines in the file.
       The positive form, `filter=`_text_, requires _text_ to be present somewhere
       in the line;
       lines without the pattern are omitted from the response.
       The negative form, `filter=`_-text_, requires _text_ NOT to be present;
       lines with the pattern are omitted from the response.
-      If this parameter is not present, the filter allows all lines in the file
-      to be part of the response.
+      If this parameter is empty or not present, the filter allows all lines
+      in the file to be part of the response.
       Note that filtering requires an exact match on _text_: no regular
       expression matching is applied.
     * `count=`_number_ \
       Optional.
-      If present, specifies the maximum line count for the response body.
+      If present and positive, specifies the maximum line count for the response body.
       The _count_ most recent, filtered lines are selected from the file.
       If the `filter` parameter disqualifies a line, it does _not_ count
       against this limit.
-      If this parameter is not present, all qualifying lines appear
-      in the response body.
+      If this parameter is non-positive or not present, all qualifying
+      lines appear in the response body.
   * Response.
     The body of the response contains the selected lines, one line from
     the file per line in the response.
@@ -94,7 +97,7 @@ This section provides the details of each endpoint.
       Optional.
       Specifies the entry to be read.  The _path_ value is used to construct
       the full path name as `/var/log/`_path_.
-      If this `name` parameter is not present, the base directory
+      If this `name` parameter is empty or not present, the base directory
       `/var/log` is used as the full path name.
       If the resulting entry is a directory, that directory is read
       and all qualifying children are added to the response.
@@ -106,15 +109,15 @@ This section provides the details of each endpoint.
     * `filter=`_text_ \
       `filter=`_-text_ \
       Optional.
-      If present, specifies an exact text pattern that to apply to response items.
+      If present and non-empty, specifies an exact text pattern that to apply
+      to response items.
       The positive form, `filter=`_text_, requires _text_ to be present
       in the name of an item;
       lines without the pattern are omitted from the response.
       The negative form, `filter=`_-text_, requires _text_ NOT to be present;
       entries with the pattern are omitted from the response.
-      If this parameter is not present, the filter allows all entries in the
-      directory (file)
-      to be part of the response.
+      If this parameter is empty or not present, the filter allows all entries
+      in the directory (file) to be part of the response.
   * Response.
     The response is a JSON array of objects.
     The response array can be empty, such as when a directory has no children.
@@ -135,6 +138,20 @@ This section provides the details of each endpoint.
 
 # `/var/log` Client
 
+A web browser can be used to exercise the service.
+Some example addresses follow (running on the same
+machine as the service):
+
+* `http://localhost:8000/list?filter=syslog` \
+  List all the files and directories directly under `/var/log`
+  that have `syslog` in the name.
+* `http://localhost:8000/read?name=syslog-saturn-2023-01-31&filter=ERROR&count=100 \
+  Read the 100 latest `ERROR` messages from `syslog-saturn-2023-01-31`.
+* `http://localhost:8000/read?name=syslog-saturn-2023-01-31&filter=-INFO&count=100 \
+  Similar to the previous example, except this allows lines _except_
+  the `INFO` entries.
+
+
 # Logging
 
 # Design Issues
@@ -148,3 +165,8 @@ This section provides the details of each endpoint.
 ## Observability
 
 ## Build & Deployment
+
+## Performance Enhancements
+* Index file, record lines, update cache
+* compress response body for "large" responses
+* chunking
