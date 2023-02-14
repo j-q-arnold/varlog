@@ -4,7 +4,7 @@
 * [Introduction](#introduction)
 * [`/var/log` Service](#varlog-service)
   * [Running the Service](#running-the-service)
-* [`/var/log` Client)(#varlog-client)
+* [`/var/log` Client](#varlog-client)
 * [Logging](#logging)
 * [Design Issues](#design-issues)
   * [Resource Model](#resource-model)
@@ -130,6 +130,8 @@ This section provides the details of each endpoint.
     Consult [List of HTTP status codes](
 	    https://en.wikipedia.org/wiki/List_of_HTTP_status_codes
     ) or similar references for details.
+
+## Running the Service
 
 # `/var/log` Client
 
