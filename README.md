@@ -116,14 +116,15 @@ This section provides the details of each endpoint.
       directory (file)
       to be part of the response.
   * Response.
-    The response is a JSON array of objects with the following name/value pairs.
+    The response is a JSON array of objects.
+    The response array can be empty, such as when a directory has no children.
+    Response objects have the following name/value pairs.
     * `"name"`.  This key's value gives the name of the entry, relative to
       `/var/log`.  For example, if the full path of an entry is
-      `/var/log/dir/file`, the object's value would be `dir/file`.
-    * `"type"`.  This key's value indicates the entry type, as `"file"` for a
+      `/var/log/dir/file`, the key's value would be `dir/file`.
+    * `"type"`.  This key's value indicates the entry type: `"file"` for a
       regular file and `"dir"` for a directory.
       Other types of entries are omitted from the response.
-    The response array can be empty, such as when a directory has no children.
   * Error conditions.
     HTTP status codes in the 400 and 500 range indicate error conditions.
     Consult [List of HTTP status codes](
