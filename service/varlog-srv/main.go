@@ -12,6 +12,8 @@ import (
 func main() {
 	app.Log(app.LogInfo, "starting")
 
+	app.DoArgs()
+
 	// Specify the handler functions for the endpoints.
 	http.HandleFunc("/list", list.Handler)
 	http.HandleFunc("/read", read.Handler)

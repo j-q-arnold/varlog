@@ -17,6 +17,8 @@
 package list
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -25,7 +27,6 @@ import (
 	"strings"
 	"varlog/service/app"
 )
-
 
 // Properties used throughout the package.
 // Parameters supplied by the client and values computed
@@ -36,6 +37,13 @@ type properties struct {
 	filterText string	// filter text from request, with '-' stripped
 	filterOmit bool		// true if filter text originally had '-'
 	rootedPath string	// full path, e.g., /var/log/dir
+}
+
+// Metadata for the response.  Note the json package only exports
+// public fields.  This uses struct tags to set the key names.
+type metadata struct {
+	Name string	`json:"name"`	// Item's name, relative to the root
+	Type string	`json:"type"`	// Item's type: file or directory
 }
 
 
@@ -61,13 +69,76 @@ func Handler(writer http.ResponseWriter, request *http.Request) {
 		http.Error(writer, err.Error(), http.StatusForbidden)
 		return
 	}
-	fmt.Fprintf(writer, "endpoint: list\n")
-	fmt.Fprintf(writer, "method %s, full path %q, proto %s\n",
-		request.Method, params.rootedPath, request.Proto)
-	fmt.Fprintf(writer, "Done\n")
+	data, err := collectMetadata(params)
+	if err != nil {
+		http.Error(writer, err.Error(), http.StatusNotFound)
+		return
+	}
+	b, err := json.Marshal(data)
+	if err != nil {
+		app.Log(app.LogError, "JSON marshal failed: %s", err.Error())
+		http.Error(writer, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	// For demonstration purposes, expand and indent the JSON.
+	// In production mode, one probably would use the default.
+	var out bytes.Buffer
+	err = json.Indent(&out, b, "", "  ")
+	if err != nil {
+		app.Log(app.LogError, "JSON indent failed: %s", err.Error())
+		http.Error(writer, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	out.WriteTo(writer)
 }
 
 
+// Generates the response metadata for this request.
+// Examines the provided name, classifies it as a file or
+// directory, and creates an array for that entity.  A file
+// returns information about itself.  A directory gives a list
+// of the children.  Any other type of name is an error.
+// This function also applies the filter parameter, possibly
+// dropping an entry that otherwise would appear in the output.
+func collectMetadata(params *properties) (data []*metadata, err error) {
+	fileInfo, err := os.Stat(params.rootedPath)
+	if err != nil {
+		app.Log(app.LogWarning, "%s", err.Error())
+		return nil, err
+	}
+	mode := fileInfo.Mode()
+	switch {
+	case mode.IsDir():
+		app.Log(app.LogDebug, "List directory %q", params.rootedPath)
+		data, err = listDir(params)
+
+	case mode.IsRegular():
+		app.Log(app.LogDebug, "List file %q", params.rootedPath)
+		data, err = listFile(params)
+
+	default:
+		s := fmt.Sprintf("Special file %q not allowed", params.rootedPath)
+		app.Log(app.LogWarning, "%s", s)
+		err = errors.New(s)
+		return nil, err
+	}
+
+	// One last step before returning the results.  All the paths collected
+	// in the metadata are full paths, starting with the root directory.
+	// We want to remove that root prefix.  The client does not have access
+	// to the file system except through the service, and the service should
+	// hide anything private.
+	root := app.Root() + "/"
+	for _, m := range(data) {
+		m.stripRootPrefix(root)
+	}
+	return data, err
+}
+
+
+// Retrieve client parameters from the http request.  Extracts
+// the values and creates the properties object that will be used
+// for the remainder of this request's processing.
 func extractParams(request *http.Request) (params *properties, err error) {
 	if err = request.ParseForm(); err != nil {
 		app.Log(app.LogError, "%s", err)
@@ -85,14 +156,13 @@ func extractParams(request *http.Request) (params *properties, err error) {
 	//
 	// generates map["a"] == [ "v1", "v2" ]
 	for key, value := range request.Form {
-		fmt.Fprintf(os.Stderr, "param %q = %q\n", key, value)
 		switch key {
 		case app.ParamFilter:
 			if len(value) == 0 {
 				break
 			}
 			params.filterText = value[0]
-			if params.filterText[0] == '-' {
+			if len(params.filterText) > 0 && params.filterText[0] == '-' {
 				params.filterOmit = true
 				params.filterText = params.filterText[1:]
 			}
@@ -110,11 +180,90 @@ func extractParams(request *http.Request) (params *properties, err error) {
 			return nil, err
 		}
 	}
-	app.Log(app.LogDebug, "list extract params %+v", params)
 	return params, nil
 }
 
 
+func (params properties) filterIncludesEntry(name string) bool {
+	// An empty filter allows all entries
+	if params.filterText == "" {
+		return true
+	}
+	if strings.Contains(name, params.filterText) {
+		return !params.filterOmit
+	}
+	// Filter text is non-empty and did not match.
+	return params.filterOmit
+}
+
+
+// Generate the return metadata for a directory.
+func listDir(params *properties) (data []*metadata, err error) {
+	// Need to initialize data away from nil
+	data = []*metadata {}
+	files, err := os.ReadDir(params.rootedPath)
+	if err != nil {
+		// This should not happen.  The code already checked the entry
+		// is a directory.
+		app.Log(app.LogError, "Unable to read directory, %s", err.Error())
+		return nil, err
+	}
+	// Note that os.ReadDir returns a sorted list.  Sorting the resulting
+	// metadata array is thus unnecessary.
+	for _, file := range(files) {
+		if ! params.filterIncludesEntry(file.Name()) {
+			continue
+		}
+		fullPath := path.Join(params.rootedPath, file.Name())
+		switch {
+		case file.IsDir():
+			m := new(metadata)
+			m.Name = fullPath
+			m.Type = app.TypeDir
+			data = append(data, m)
+
+		case file.Type().IsRegular():
+			m := new(metadata)
+			m.Name = fullPath
+			m.Type = app.TypeFile
+			data = append(data, m)
+
+		default:
+			// Ignore special files
+			continue
+		}
+	}
+	return data, nil
+}
+
+
+// Generate the return metadata for a regular file.
+// The file itself is the single entry in the output, though
+// it might be dropped when the filter is applied.
+func listFile(params *properties) (data []*metadata, err error) {
+	// Need to initialize data away from nil
+	data = []*metadata {}
+	if ! params.filterIncludesEntry(params.name) {
+		return data, nil
+	}
+	m := new(metadata)
+	m.Name = params.rootedPath
+	m.Type = app.TypeFile
+	return append(data, m), nil
+}
+
+
+// Removes the leading root prefix from a metadata name.
+// That is, turns "/var/log/dir/f" into "dir/f".
+// Go 1.20 (not yet official) has strings.CutPrefix, but this
+// uses the .Cut function from current release.
+func (m *metadata)stripRootPrefix(root string) {
+	_, m.Name, _ = strings.Cut(m.Name, root)
+}
+
+
+// Check the client's parameters for validity.  This is mainly
+// syntactic checking, without consulting the file system.
 func validateParams(params *properties) (err error) {
 	// Parameter 'name' validation.
 
@@ -126,7 +275,6 @@ func validateParams(params *properties) (err error) {
 	 */
 	root := app.Root()
 	p := path.Join(root, params.name)
-	app.Log(app.LogDebug, "joined path %q", p)
 	if p != root && ! strings.HasPrefix(p, root + "/") {
 		err = errors.New(
 			fmt.Sprintf("Invalid name parameter (%q)", params.name))
@@ -139,6 +287,5 @@ func validateParams(params *properties) (err error) {
 	// The filter is a simple text string match.
 	// If this allowed regex or other matching logic, something would
 	// need to go here.
-	app.Log(app.LogDebug, "list validate params %+v", params)
 	return nil
 }
