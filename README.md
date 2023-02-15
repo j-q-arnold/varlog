@@ -50,9 +50,10 @@ This section provides the details of each endpoint.
       This "file" must be a regular file---not a directory, a symbolic link,
       nor a special file of any kind.
       Note that _path_ can contain multiple levels, giving full access to the
-      The _path_ value may not be empty.
       `/var/log` directory tree.  For example, if _path_ has the value
       `dir1/dir2/file-abc`, the full path to be read is `/var/log/dir1/dir2/file-abc`.
+      The _path_ value may not be empty, and it may not use `..`
+      to escape the `/var/log` tree.
     * `filter=`_text_ \
       `filter=`_-text_ \
       Optional.
@@ -106,6 +107,7 @@ This section provides the details of each endpoint.
       Note that _path_ can contain multiple levels, giving full access to the
       `/var/log` directory tree.  For example, if _path_ has the value
       `dir1/dir2/file-abc`, the full path to be read is `/var/log/dir1/dir2/file-abc`.
+      The _path_ value may not use `..` to escape the `/var/log` tree.
     * `filter=`_text_ \
       `filter=`_-text_ \
       Optional.
