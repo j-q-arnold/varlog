@@ -10,11 +10,11 @@ const (
 	Root = "/var/log"
 )
 
-func buildParams(name string) *properties {
-	params := new(properties)
-	params.name = name
-	params.rootedPath = path.Join(Root, name)
-	return params
+func buildProperties(name string) *properties {
+	props := new(properties)
+	props.name = name
+	props.rootedPath = path.Join(Root, name)
+	return props
 }
 
 func TestExtractParams(t *testing.T) {
@@ -41,8 +41,8 @@ func TestListDir_posFilter(t *testing.T) {
 }
 
 func TestListFile_nilFilter(t *testing.T) {
-	params := buildParams("name")
-	data, err := listFile(params)
+	props := buildProperties("name")
+	data, err := props.listFile()
 	if err != nil {
 		t.Errorf("expected nil error, got %v\n", err)
 	}
@@ -55,10 +55,10 @@ func TestListFile_nilFilter(t *testing.T) {
 }
 
 func TestListFile_negFilter(t *testing.T) {
-	params := buildParams("name")
-	params.filterText = "n"
-	params.filterOmit = true
-	data, err := listFile(params)
+	props := buildProperties("name")
+	props.filterText = "n"
+	props.filterOmit = true
+	data, err := props.listFile()
 	if err != nil {
 		t.Errorf("expected nil error, got %v\n", err)
 	}
@@ -66,8 +66,8 @@ func TestListFile_negFilter(t *testing.T) {
 		t.Errorf("expected data len 0, got %d\n", len(data))
 	}
 
-	params.filterText = "z"
-	data, err = listFile(params)
+	props.filterText = "z"
+	data, err = props.listFile()
 	if err != nil {
 		t.Errorf("expected nil error, got %v\n", err)
 	}
@@ -80,10 +80,10 @@ func TestListFile_negFilter(t *testing.T) {
 }
 
 func TestListFile_posFilter(t *testing.T) {
-	params := buildParams("name")
-	params.filterText = "z"
-	params.filterOmit = false
-	data, err := listFile(params)
+	props := buildProperties("name")
+	props.filterText = "z"
+	props.filterOmit = false
+	data, err := props.listFile()
 	if err != nil {
 		t.Errorf("expected nil error, got %v\n", err)
 	}
@@ -91,8 +91,8 @@ func TestListFile_posFilter(t *testing.T) {
 		t.Errorf("expected data len 0, got %d\n", len(data))
 	}
 
-	params.filterText = "a"
-	data, err = listFile(params)
+	props.filterText = "a"
+	data, err = props.listFile()
 	if err != nil {
 		t.Errorf("expected nil error, got %v\n", err)
 	}
@@ -120,29 +120,29 @@ func TestStripRootPrefix(t *testing.T) {
 }
 
 func TestValidateParams(t *testing.T) {
-	params := buildParams("a/b/c")
-	err := validateParams(params)
+	props := buildProperties("a/b/c")
+	err := props.validateParams()
 	if err != nil {
 		t.Errorf("Expected nil, got %v", err)
 	}
 	expected := Root + "/" + "a/b/c"
-	if params.rootedPath != expected {
-		t.Errorf("Expected path %q, got %q", expected, params.rootedPath)
+	if props.rootedPath != expected {
+		t.Errorf("Expected path %q, got %q", expected, props.rootedPath)
 	}
 
-	params.name = "//./x/./y"
-	err = validateParams(params)
+	props.name = "//./x/./y"
+	err = props.validateParams()
 	if err != nil {
 		t.Errorf("Expected error but got %v", err)
 	}
 	expected = Root + "/" + "x/y"
-	if params.rootedPath != expected {
-		t.Errorf("Expected path %q, got %q", expected, params.rootedPath)
+	if props.rootedPath != expected {
+		t.Errorf("Expected path %q, got %q", expected, props.rootedPath)
 	}
 
-	params.name = "../../x/y"
-	err = validateParams(params)
+	props.name = "../../x/y"
+	err = props.validateParams()
 	if err == nil {
-		t.Errorf("Expected error but got nil, path %q", params.rootedPath)
+		t.Errorf("Expected error but got nil, path %q", props.rootedPath)
 	}
 }

@@ -51,25 +51,27 @@ type metadata struct {
 // Controls overall flow for the endpoint: gather parameters,
 // perform the endpoint's actions, write the response.
 func Handler(writer http.ResponseWriter, request *http.Request) {
+	var props *properties = new(properties)
+
 	app.Log(app.LogInfo, "%q", request.URL)
 
 	// All parameter handling and validation should be done before
 	// starting to write the response body (through writer).
 	// Otherwise a prelimary write on the response will set the
 	// status, and later error handling will not work properly.
-	// The response should be "clean" if http.Error() is used at all.
+	// The response should be unchanged if http.Error() is used at all.
 
-	params, err := extractParams(request)
+	err := props.extractParams(request)
 	if err != nil {
 		http.Error(writer, err.Error(), http.StatusBadRequest)
 		return
 	}
-	err = validateParams(params)
+	err = props.validateParams()
 	if err != nil {
 		http.Error(writer, err.Error(), http.StatusForbidden)
 		return
 	}
-	data, err := collectMetadata(params)
+	data, err := props.collectMetadata()
 	if err != nil {
 		http.Error(writer, err.Error(), http.StatusNotFound)
 		return
@@ -100,24 +102,24 @@ func Handler(writer http.ResponseWriter, request *http.Request) {
 // of the children.  Any other type of name is an error.
 // This function also applies the filter parameter, possibly
 // dropping an entry that otherwise would appear in the output.
-func collectMetadata(params *properties) (data []*metadata, err error) {
-	fileInfo, err := os.Stat(params.rootedPath)
+func (props *properties) collectMetadata() (data []*metadata, err error) {
+	fileInfo, err := os.Stat(props.rootedPath)
 	if err != nil {
-		app.Log(app.LogWarning, "%s", err.Error())
+		app.Log(app.LogWarning, "Path %s invalid, %s", props.rootedPath, err.Error())
 		return nil, err
 	}
 	mode := fileInfo.Mode()
 	switch {
 	case mode.IsDir():
-		app.Log(app.LogDebug, "List directory %q", params.rootedPath)
-		data, err = listDir(params)
+		app.Log(app.LogDebug, "List directory %q", props.rootedPath)
+		data, err = props.listDir()
 
 	case mode.IsRegular():
-		app.Log(app.LogDebug, "List file %q", params.rootedPath)
-		data, err = listFile(params)
+		app.Log(app.LogDebug, "List file %q", props.rootedPath)
+		data, err = props.listFile()
 
 	default:
-		s := fmt.Sprintf("Special file %q not allowed", params.rootedPath)
+		s := fmt.Sprintf("Special file %q not allowed", props.rootedPath)
 		app.Log(app.LogWarning, "%s", s)
 		err = errors.New(s)
 		return nil, err
@@ -137,14 +139,13 @@ func collectMetadata(params *properties) (data []*metadata, err error) {
 
 
 // Retrieve client parameters from the http request.  Extracts
-// the values and creates the properties object that will be used
+// the values and updates the properties object that will be used
 // for the remainder of this request's processing.
-func extractParams(request *http.Request) (params *properties, err error) {
+func (props *properties) extractParams(request *http.Request) (err error) {
 	if err = request.ParseForm(); err != nil {
 		app.Log(app.LogError, "%s", err)
-		return nil, err
+		return err
 	}
-	params = new(properties)
 
 	// ParseForm above generates url.Values, which is a map from
 	// a string key to an array of strings.  A given key is allowed
@@ -161,30 +162,30 @@ func extractParams(request *http.Request) (params *properties, err error) {
 			if len(value) == 0 {
 				break
 			}
-			params.filterText = value[0]
-			if len(params.filterText) > 0 && params.filterText[0] == '-' {
-				params.filterOmit = true
-				params.filterText = params.filterText[1:]
+			props.filterText = value[0]
+			if len(props.filterText) > 0 && props.filterText[0] == '-' {
+				props.filterOmit = true
+				props.filterText = props.filterText[1:]
 			}
 
 		case app.ParamName:
 			if len(value) == 0 {
 				break
 			}
-			params.name = value[0]
+			props.name = value[0]
 
 		default:
 			// Treat unknown keys as a client error.
 			err = errors.New(fmt.Sprintf("Parameter %q invalid", key))
 			app.Log(app.LogWarning, "%s", err)
-			return nil, err
+			return err
 		}
 	}
-	return params, nil
+	return nil
 }
 
 
-func (params properties) filterIncludesEntry(name string) bool {
+func (params *properties) filterIncludesEntry(name string) bool {
 	// An empty filter allows all entries
 	if params.filterText == "" {
 		return true
@@ -198,10 +199,10 @@ func (params properties) filterIncludesEntry(name string) bool {
 
 
 // Generate the return metadata for a directory.
-func listDir(params *properties) (data []*metadata, err error) {
+func (props *properties) listDir() (data []*metadata, err error) {
 	// Need to initialize data away from nil
 	data = []*metadata {}
-	files, err := os.ReadDir(params.rootedPath)
+	files, err := os.ReadDir(props.rootedPath)
 	if err != nil {
 		// This should not happen.  The code already checked the entry
 		// is a directory.
@@ -211,10 +212,10 @@ func listDir(params *properties) (data []*metadata, err error) {
 	// Note that os.ReadDir returns a sorted list.  Sorting the resulting
 	// metadata array is thus unnecessary.
 	for _, file := range(files) {
-		if ! params.filterIncludesEntry(file.Name()) {
+		if ! props.filterIncludesEntry(file.Name()) {
 			continue
 		}
-		fullPath := path.Join(params.rootedPath, file.Name())
+		fullPath := path.Join(props.rootedPath, file.Name())
 		switch {
 		case file.IsDir():
 			m := new(metadata)
@@ -240,14 +241,14 @@ func listDir(params *properties) (data []*metadata, err error) {
 // Generate the return metadata for a regular file.
 // The file itself is the single entry in the output, though
 // it might be dropped when the filter is applied.
-func listFile(params *properties) (data []*metadata, err error) {
+func (props *properties) listFile() (data []*metadata, err error) {
 	// Need to initialize data away from nil
 	data = []*metadata {}
-	if ! params.filterIncludesEntry(params.name) {
+	if ! props.filterIncludesEntry(props.name) {
 		return data, nil
 	}
 	m := new(metadata)
-	m.Name = params.rootedPath
+	m.Name = props.rootedPath
 	m.Type = app.TypeFile
 	return append(data, m), nil
 }
@@ -264,7 +265,7 @@ func (m *metadata)stripRootPrefix(root string) {
 
 // Check the client's parameters for validity.  This is mainly
 // syntactic checking, without consulting the file system.
-func validateParams(params *properties) (err error) {
+func (props *properties) validateParams() (err error) {
 	// Parameter 'name' validation.
 
 	/* Join the root and the user's path.  The result is cleaned:
@@ -274,14 +275,14 @@ func validateParams(params *properties) (err error) {
 	 * input path was trying to go outside the root.
 	 */
 	root := app.Root()
-	p := path.Join(root, params.name)
+	p := path.Join(root, props.name)
 	if p != root && ! strings.HasPrefix(p, root + "/") {
 		err = errors.New(
-			fmt.Sprintf("Invalid name parameter (%q)", params.name))
+			fmt.Sprintf("Invalid name parameter (%q)", props.name))
 		app.Log(app.LogWarning, "%s", err.Error())
 		return err
 	}
-	params.rootedPath = p
+	props.rootedPath = p
 
 	// Parameter 'filter' validation: none needed
 	// The filter is a simple text string match.

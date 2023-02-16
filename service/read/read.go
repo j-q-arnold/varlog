@@ -45,6 +45,8 @@ type properties struct {
 
 
 func Handler(writer http.ResponseWriter, request *http.Request) {
+	var props *properties = new(properties)
+
 	app.Log(app.LogInfo, "%q", request.URL)
 
 	// All parameter handling and validation should be done before
@@ -53,29 +55,28 @@ func Handler(writer http.ResponseWriter, request *http.Request) {
 	// status, and later error handling will not work properly.
 	// The response should be "clean" if http.Error() is used at all.
 
-	params, err := extractParams(request)
+	err := props.extractParams(request)
 	if err != nil {
 		http.Error(writer, err.Error(), http.StatusBadRequest)
 		return
 	}
-	err = validateParams(params)
+	err = props.validateParams()
 	if err != nil {
 		http.Error(writer, err.Error(), http.StatusForbidden)
 		return
 	}
 	fmt.Fprintf(writer, "endpoint: read\n")
 	fmt.Fprintf(writer, "method %s, full path %q, proto %s\n",
-		request.Method, params.rootedPath, request.Proto)
+		request.Method, props.rootedPath, request.Proto)
 	fmt.Fprintf(writer, "Done\n")
 }
 
 
-func extractParams(request *http.Request) (params *properties, err error) {
+func (props *properties) extractParams(request *http.Request) (err error) {
 	if err = request.ParseForm(); err != nil {
 		app.Log(app.LogError, "%s", err)
-		return nil, err
+		return err
 	}
-	params = new(properties)
 
 	// ParseForm above generates url.Values, which is a map from
 	// a string key to an array of strings.  A given key is allowed
@@ -93,43 +94,43 @@ func extractParams(request *http.Request) (params *properties, err error) {
 			if len(value) == 0 {
 				break
 			}
-			if params.count, err = strconv.Atoi(value[0]); err != nil {
+			if props.count, err = strconv.Atoi(value[0]); err != nil {
 				err = errors.New(
 						fmt.Sprintf("Invalid conversion of param %s=%q, %s",
 								app.ParamCount, value[0], err.Error()))
 				app.Log(app.LogWarning, "%s", err.Error());
-				return nil, err
+				return err
 			}
 
 		case app.ParamFilter:
 			if len(value) == 0 {
 				break
 			}
-			params.filterText = value[0]
-			if params.filterText[0] == '-' {
-				params.filterOmit = true
-				params.filterText = params.filterText[1:]
+			props.filterText = value[0]
+			if len(props.filterText) > 0 && props.filterText[0] == '-' {
+				props.filterOmit = true
+				props.filterText = props.filterText[1:]
 			}
 
 		case app.ParamName:
 			if len(value) == 0 {
 				break
 			}
-			params.name = value[0]
+			props.name = value[0]
 
 		default:
 			// Treat unknown keys as a client error.
 			err = errors.New(fmt.Sprintf("Parameter %q invalid", key))
 			app.Log(app.LogWarning, "%s", err)
-			return nil, err
+			return err
 		}
 	}
-	app.Log(app.LogDebug, "read extract params %+v", params)
-	return params, nil
+	app.Log(app.LogDebug, "read extract params %+v", props)
+	return nil
 }
 
 
-func validateParams(params *properties) (err error) {
+func (props *properties) validateParams() (err error) {
 	// Parameter 'name' validation.
 
 	/* Join the root and the user's path.  The result is cleaned:
@@ -139,20 +140,20 @@ func validateParams(params *properties) (err error) {
 	 * input path was trying to go outside the root.
 	 */
 	root := app.Root()
-	p := path.Join(root, params.name)
+	p := path.Join(root, props.name)
 	app.Log(app.LogDebug, "joined path %q", p)
 	if p != root && ! strings.HasPrefix(p, root + "/") {
 		err = errors.New(
-			fmt.Sprintf("Invalid name parameter (%q)", params.name))
+			fmt.Sprintf("Invalid name parameter (%q)", props.name))
 		app.Log(app.LogWarning, "%s", err.Error())
 		return err
 	}
-	params.rootedPath = p
+	props.rootedPath = p
 
 	// Parameter 'filter' validation: none needed
 	// The filter is a simple text string match.
 	// If this allowed regex or other matching logic, something would
 	// need to go here.
-	app.Log(app.LogDebug, "read validate params %+v", params)
+	app.Log(app.LogDebug, "read validate params %+v", props)
 	return nil
 }
