@@ -32,7 +32,7 @@ const (
 
 
 var properties struct {
-	root string		// see app.Root()
+	root string		// see app.Root().  No trailing slash.
 }
 
 

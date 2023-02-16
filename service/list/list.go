@@ -33,19 +33,18 @@ import (
 // during request processing that move from one step
 // to another.
 type properties struct {
-	name       string	// name parameter from request
-	filterText string	// filter text from request, with '-' stripped
-	filterOmit bool		// true if filter text originally had '-'
-	rootedPath string	// full path, e.g., /var/log/dir
+	name       string // name parameter from request
+	filterText string // filter text from request, with '-' stripped
+	filterOmit bool   // true if filter text originally had '-'
+	rootedPath string // full path, e.g., /var/log/dir
 }
 
 // Metadata for the response.  Note the json package only exports
 // public fields.  This uses struct tags to set the key names.
 type metadata struct {
-	Name string	`json:"name"`	// Item's name, relative to the root
-	Type string	`json:"type"`	// Item's type: file or directory
+	Name string `json:"name"` // Item's name, relative to the root
+	Type string `json:"type"` // Item's type: file or directory
 }
-
 
 // Provides the top-level handler, as called by the HTTP listener.
 // Controls overall flow for the endpoint: gather parameters,
@@ -94,7 +93,6 @@ func Handler(writer http.ResponseWriter, request *http.Request) {
 	out.WriteTo(writer)
 }
 
-
 // Generates the response metadata for this request.
 // Examines the provided name, classifies it as a file or
 // directory, and creates an array for that entity.  A file
@@ -131,12 +129,11 @@ func (props *properties) collectMetadata() (data []*metadata, err error) {
 	// to the file system except through the service, and the service should
 	// hide anything private.
 	root := app.Root() + "/"
-	for _, m := range(data) {
+	for _, m := range data {
 		m.stripRootPrefix(root)
 	}
 	return data, err
 }
-
 
 // Retrieve client parameters from the http request.  Extracts
 // the values and updates the properties object that will be used
@@ -184,7 +181,6 @@ func (props *properties) extractParams(request *http.Request) (err error) {
 	return nil
 }
 
-
 func (params *properties) filterIncludesEntry(name string) bool {
 	// An empty filter allows all entries
 	if params.filterText == "" {
@@ -197,11 +193,10 @@ func (params *properties) filterIncludesEntry(name string) bool {
 	return params.filterOmit
 }
 
-
 // Generate the return metadata for a directory.
 func (props *properties) listDir() (data []*metadata, err error) {
 	// Need to initialize data away from nil
-	data = []*metadata {}
+	data = []*metadata{}
 	files, err := os.ReadDir(props.rootedPath)
 	if err != nil {
 		// This should not happen.  The code already checked the entry
@@ -211,8 +206,8 @@ func (props *properties) listDir() (data []*metadata, err error) {
 	}
 	// Note that os.ReadDir returns a sorted list.  Sorting the resulting
 	// metadata array is thus unnecessary.
-	for _, file := range(files) {
-		if ! props.filterIncludesEntry(file.Name()) {
+	for _, file := range files {
+		if !props.filterIncludesEntry(file.Name()) {
 			continue
 		}
 		fullPath := path.Join(props.rootedPath, file.Name())
@@ -237,14 +232,13 @@ func (props *properties) listDir() (data []*metadata, err error) {
 	return data, nil
 }
 
-
 // Generate the return metadata for a regular file.
 // The file itself is the single entry in the output, though
 // it might be dropped when the filter is applied.
 func (props *properties) listFile() (data []*metadata, err error) {
 	// Need to initialize data away from nil
-	data = []*metadata {}
-	if ! props.filterIncludesEntry(props.name) {
+	data = []*metadata{}
+	if !props.filterIncludesEntry(props.name) {
 		return data, nil
 	}
 	m := new(metadata)
@@ -253,15 +247,13 @@ func (props *properties) listFile() (data []*metadata, err error) {
 	return append(data, m), nil
 }
 
-
 // Removes the leading root prefix from a metadata name.
 // That is, turns "/var/log/dir/f" into "dir/f".
 // Go 1.20 (not yet official) has strings.CutPrefix, but this
 // uses the .Cut function from current release.
-func (m *metadata)stripRootPrefix(root string) {
+func (m *metadata) stripRootPrefix(root string) {
 	_, m.Name, _ = strings.Cut(m.Name, root)
 }
-
 
 // Check the client's parameters for validity.  This is mainly
 // syntactic checking, without consulting the file system.
@@ -276,7 +268,7 @@ func (props *properties) validateParams() (err error) {
 	 */
 	root := app.Root()
 	p := path.Join(root, props.name)
-	if p != root && ! strings.HasPrefix(p, root + "/") {
+	if p != root && !strings.HasPrefix(p, root+"/") {
 		err = errors.New(
 			fmt.Sprintf("Invalid name parameter (%q)", props.name))
 		app.Log(app.LogWarning, "%s", err.Error())

@@ -1,6 +1,5 @@
 package list
 
-
 import (
 	"path"
 	"testing"
@@ -47,7 +46,7 @@ func TestListFile_nilFilter(t *testing.T) {
 		t.Errorf("expected nil error, got %v\n", err)
 	}
 	if len(data) != 1 {
-		t.Errorf("expected data len 1, got %d\n", len(data));
+		t.Errorf("expected data len 1, got %d\n", len(data))
 	}
 	if data[0].Name != "/var/log/name" {
 		t.Errorf("Expected data.Name '/var/log/name', got %v", data[0].Name)
@@ -104,18 +103,17 @@ func TestListFile_posFilter(t *testing.T) {
 	}
 }
 
-
 func TestStripRootPrefix(t *testing.T) {
 	var m metadata
 	m = metadata{Name: "/var/log/abc"}
 	m.stripRootPrefix("/var/log/")
-	if (m.Name != "abc") {
+	if m.Name != "abc" {
 		t.Errorf("Expected 'abc', got %q\n", m.Name)
 	}
 	m = metadata{Name: "/other/root/a/b/c"}
 	m.stripRootPrefix("/other/root/")
-	if (m.Name != "a/b/c") {
-		t.Errorf("Expected 'a/b/c', got %q\n", m.Name);
+	if m.Name != "a/b/c" {
+		t.Errorf("Expected 'a/b/c', got %q\n", m.Name)
 	}
 }
 
