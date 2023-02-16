@@ -8,7 +8,6 @@ import (
 	"varlog/service/read"
 )
 
-
 func main() {
 	app.Log(app.LogInfo, "starting")
 

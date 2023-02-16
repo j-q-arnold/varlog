@@ -18,7 +18,6 @@
  */
 package read
 
-
 import (
 	"errors"
 	"fmt"
@@ -30,19 +29,17 @@ import (
 	"varlog/service/app"
 )
 
-
 // Properties used throughout the package.
 // Parameters supplied by the client and values computed
 // during request processing that move from one step
 // to another.
 type properties struct {
-	name       string	// name parameter from request
-	filterText string	// filter text from request, with '-' stripped
-	filterOmit bool		// true if filter text originally had '-'
-	count int			// Maximum lines to return to client
-	rootedPath string	// full path, e.g., /var/log/dir
+	name       string // name parameter from request
+	filterText string // filter text from request, with '-' stripped
+	filterOmit bool   // true if filter text originally had '-'
+	count      int    // Maximum lines to return to client
+	rootedPath string // full path, e.g., /var/log/dir
 }
-
 
 func Handler(writer http.ResponseWriter, request *http.Request) {
 	var props *properties = new(properties)
@@ -71,7 +68,6 @@ func Handler(writer http.ResponseWriter, request *http.Request) {
 	fmt.Fprintf(writer, "Done\n")
 }
 
-
 func (props *properties) extractParams(request *http.Request) (err error) {
 	if err = request.ParseForm(); err != nil {
 		app.Log(app.LogError, "%s", err)
@@ -96,9 +92,9 @@ func (props *properties) extractParams(request *http.Request) (err error) {
 			}
 			if props.count, err = strconv.Atoi(value[0]); err != nil {
 				err = errors.New(
-						fmt.Sprintf("Invalid conversion of param %s=%q, %s",
-								app.ParamCount, value[0], err.Error()))
-				app.Log(app.LogWarning, "%s", err.Error());
+					fmt.Sprintf("Invalid conversion of param %s=%q, %s",
+						app.ParamCount, value[0], err.Error()))
+				app.Log(app.LogWarning, "%s", err.Error())
 				return err
 			}
 
@@ -129,7 +125,6 @@ func (props *properties) extractParams(request *http.Request) (err error) {
 	return nil
 }
 
-
 func (props *properties) validateParams() (err error) {
 	// Parameter 'name' validation.
 
@@ -142,7 +137,7 @@ func (props *properties) validateParams() (err error) {
 	root := app.Root()
 	p := path.Join(root, props.name)
 	app.Log(app.LogDebug, "joined path %q", p)
-	if p != root && ! strings.HasPrefix(p, root + "/") {
+	if p != root && !strings.HasPrefix(p, root+"/") {
 		err = errors.New(
 			fmt.Sprintf("Invalid name parameter (%q)", props.name))
 		app.Log(app.LogWarning, "%s", err.Error())

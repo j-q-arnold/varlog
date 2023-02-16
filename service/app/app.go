@@ -10,36 +10,33 @@ import (
 )
 
 const (
-	Application = "varlog"		// The application name
-	LogDebug    = "DEBUG"   	// log level: DEBUG
-	LogError    = "ERROR"   	// log level: ERROR
-	LogInfo     = "INFO"   	 	// log level: INFO
-	LogWarning  = "WARNING"		// log level: WARNING
+	Application = "varlog"  // The application name
+	LogDebug    = "DEBUG"   // log level: DEBUG
+	LogError    = "ERROR"   // log level: ERROR
+	LogInfo     = "INFO"    // log level: INFO
+	LogWarning  = "WARNING" // log level: WARNING
 
-	ParamCount = "count"		// Name of the 'count' parameter
-	ParamFilter = "filter"		// Name of the 'filter' parameter
-	ParamName = "name"			// Name of the 'name' parameter
+	ParamCount  = "count"  // Name of the 'count' parameter
+	ParamFilter = "filter" // Name of the 'filter' parameter
+	ParamName   = "name"   // Name of the 'name' parameter
 
 	// Standard root of the file tree.  This can be updated
 	// at program startup.  The rest of the application should
 	// use app.Root() to get the correct value.
-	pathRoot	= "/var/log"	// Standard root of file tree
+	pathRoot = "/var/log" // Standard root of file tree
 
 	// Values for the 'list' metadata
-	TypeDir = "dir"
+	TypeDir  = "dir"
 	TypeFile = "file"
 )
 
-
 var properties struct {
-	root string		// see app.Root().  No trailing slash.
+	root string // see app.Root().  No trailing slash.
 }
-
 
 func init() {
 	properties.root = pathRoot
 }
-
 
 // Processes command line arguments, if any.
 // The program currently accepts one optional argument, giving
@@ -56,7 +53,6 @@ func DoArgs() {
 	}
 }
 
-
 // Produces a log entry containing the application name (implicit),
 // the log level, and arguments supplied by the caller.
 func Log(level string, format string, args ...interface{}) {
@@ -65,7 +61,6 @@ func Log(level string, format string, args ...interface{}) {
 		Application, level, s)
 }
 
-
 // Provides the active rooted path for the endpoints.
 // The default is /var/log, but this can be updated for
 // testing and local execution.
@@ -73,7 +68,6 @@ func Log(level string, format string, args ...interface{}) {
 func Root() string {
 	return properties.root
 }
-
 
 // Sets the active root directory for the service endpoints.
 // Parameters supplied by clients are interpreted relative to
