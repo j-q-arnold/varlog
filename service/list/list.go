@@ -181,16 +181,16 @@ func (props *properties) extractParams(request *http.Request) (err error) {
 	return nil
 }
 
-func (params *properties) filterIncludesEntry(name string) bool {
+func (props *properties) filterIncludesEntry(name string) bool {
 	// An empty filter allows all entries
-	if params.filterText == "" {
+	if props.filterText == "" {
 		return true
 	}
-	if strings.Contains(name, params.filterText) {
-		return !params.filterOmit
+	if strings.Contains(name, props.filterText) {
+		return !props.filterOmit
 	}
 	// Filter text is non-empty and did not match.
-	return params.filterOmit
+	return props.filterOmit
 }
 
 // Generate the return metadata for a directory.
