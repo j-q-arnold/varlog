@@ -1,6 +1,6 @@
 /* Provides code for the /read service endpoint.
  * A summary of the operation: Given a named file,
- * read qualifying lines and present them most-recent
+ * read qualifying lines and present the most-recent
  * first in the response.
  *
  * Parameter 'name=path' provides the partial path, appended
@@ -22,7 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"os"
+	_ "os"
 	"path"
 	"strconv"
 	"strings"
@@ -41,6 +41,9 @@ type properties struct {
 	rootedPath string // full path, e.g., /var/log/dir
 }
 
+// Provides the top-level handler, as called by the HTTP listener.
+// Controls overall flow for the endpoint: gather parameters,
+// perform the endpoint's actions, write the response.
 func Handler(writer http.ResponseWriter, request *http.Request) {
 	var props *properties = new(properties)
 
@@ -68,6 +71,9 @@ func Handler(writer http.ResponseWriter, request *http.Request) {
 	fmt.Fprintf(writer, "Done\n")
 }
 
+// Retrieve client parameters from the http request.  Extracts
+// the values and updates the properties object that will be used
+// for the remainder of this request's processing.
 func (props *properties) extractParams(request *http.Request) (err error) {
 	if err = request.ParseForm(); err != nil {
 		app.Log(app.LogError, "%s", err)
@@ -84,7 +90,6 @@ func (props *properties) extractParams(request *http.Request) (err error) {
 	//
 	// generates map["a"] == [ "v1", "v2" ]
 	for key, value := range request.Form {
-		fmt.Fprintf(os.Stderr, "param %q = %q\n", key, value)
 		switch key {
 		case app.ParamCount:
 			if len(value) == 0 {
@@ -121,10 +126,11 @@ func (props *properties) extractParams(request *http.Request) (err error) {
 			return err
 		}
 	}
-	app.Log(app.LogDebug, "read extract params %+v", props)
 	return nil
 }
 
+// Check the client's parameters for validity.  This is mainly
+// syntactic checking, without consulting the file system.
 func (props *properties) validateParams() (err error) {
 	// Parameter 'name' validation.
 
@@ -136,7 +142,6 @@ func (props *properties) validateParams() (err error) {
 	 */
 	root := app.Root()
 	p := path.Join(root, props.name)
-	app.Log(app.LogDebug, "joined path %q", p)
 	if p != root && !strings.HasPrefix(p, root+"/") {
 		err = errors.New(
 			fmt.Sprintf("Invalid name parameter (%q)", props.name))
@@ -149,6 +154,9 @@ func (props *properties) validateParams() (err error) {
 	// The filter is a simple text string match.
 	// If this allowed regex or other matching logic, something would
 	// need to go here.
-	app.Log(app.LogDebug, "read validate params %+v", props)
+
+	// Parameter 'count' validation: none needed
+	// Any negative/zero count passes all filtered lines.
+	// Any positive value sets an upper limit.
 	return nil
 }
