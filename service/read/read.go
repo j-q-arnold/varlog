@@ -22,7 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	_ "os"
+	"os"
 	"path"
 	"strconv"
 	"strings"
@@ -65,6 +65,7 @@ func Handler(writer http.ResponseWriter, request *http.Request) {
 		http.Error(writer, err.Error(), http.StatusForbidden)
 		return
 	}
+	props.writeLines(writer)
 	fmt.Fprintf(writer, "endpoint: read\n")
 	fmt.Fprintf(writer, "method %s, full path %q, proto %s\n",
 		request.Method, props.rootedPath, request.Proto)
@@ -158,5 +159,21 @@ func (props *properties) validateParams() (err error) {
 	// Parameter 'count' validation: none needed
 	// Any negative/zero count passes all filtered lines.
 	// Any positive value sets an upper limit.
+	return nil
+}
+
+func (props *properties) writeLines(writer http.ResponseWriter) (err error) {
+	var r *reverser
+	file, err := os.Open(props.rootedPath)
+	if err != nil {
+		app.Log(app.LogError, "Cannot open %s: %s", props.rootedPath, err.Error())
+		return err
+	}
+	defer file.Close()
+
+	r, err = props.newReverser(file)
+	// todo check error
+	// todo: revise run, loop
+	r.run(writer)
 	return nil
 }
