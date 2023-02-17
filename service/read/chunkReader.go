@@ -7,6 +7,9 @@ import (
 )
 
 const (
+	// The size of chunks read from the file in one Read operation.
+	// This can be adjusted for file system performance, typical
+	// log file size and host environment.
 	productionChunkSize = 64 * 1024
 )
 
@@ -45,7 +48,9 @@ type chunkReader struct {
 // at a time, in reverse order through the file.  The caller
 // remains responsible for closing the file.
 // Size gives the chunk size the client plans to use.  This can
-// be zero to use the default.
+// be zero to use the default.  Note the caller of the chunk reader
+// needs to supply a read buffer to hold chunk data.  That
+// buffer should conform to the actual size being used.
 // Returns the new chunkReader, the chunk size, and an error.
 // Returns a nil chunkReader if an error occurs.
 func newChunkReader(file *os.File, size int) (* chunkReader, int, error) {

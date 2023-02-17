@@ -39,6 +39,7 @@ type properties struct {
 	filterOmit bool   // true if filter text originally had '-'
 	count      int    // Maximum lines to return to client
 	rootedPath string // full path, e.g., /var/log/dir
+	chunkSize  int    // chunk size to read from the log file
 }
 
 // Provides the top-level handler, as called by the HTTP listener.
@@ -46,6 +47,10 @@ type properties struct {
 // perform the endpoint's actions, write the response.
 func Handler(writer http.ResponseWriter, request *http.Request) {
 	var props *properties = new(properties)
+
+	// For testing purposes, set the chunk size here.
+	// Replace 0 (default) with the test value.
+	props.chunkSize = 0
 
 	app.Log(app.LogInfo, "%q", request.URL)
 
@@ -178,9 +183,11 @@ func (props *properties) writeLines(writer http.ResponseWriter) (err error) {
 	}
 	var total int
 	for r.scan() {
-		buf := r.text()
-		total += len(buf)
-		fmt.Printf("chunk: len %d, total %d\n", len(buf), total)
+		lines := r.lines()
+		total += len(lines)
+		for j, s := range lines {
+			app.Log(app.LogDebug, "reverser %d: '%s'", j, s)
+		}
 	}
 	return r.err()
 }
