@@ -1,11 +1,37 @@
 package read
 
 import (
-	"bufio"
 	"io"
 	"os"
+	_ "varlog/service/app"
 )
 
+const (
+	productionChunkSize = 64 * 1024
+)
+
+// This code read a file backwards.  As a log file
+// accumulates lines, the most recent appear at the end.
+// When viewing lines for diagnostics, the desire is to
+// see the most recent lines first.  This code reads
+// a log file "backwards", one chunk at a time.
+//
+// Some edge cases and other considerations.
+//
+// File reading.
+// 1.  Some files could be too big to read into memory as a
+//		single blob.  To avoid special cases for large and
+//		small files, this code handles all files alike, reading
+//		chunks and processing each chunk in turn.
+// 2.  Go's bufio package does not allow seeking, so this uses
+//		low-level I/O. To avoid unaligned reads, this reads a
+//		partial block at the file's end and then backs up to
+//		major boundaries for each previous chunk. This uses
+//		a moderate power of 2 to agree with file systems.  This
+//		chunk size can vary for testing (even to odd values),
+//		but use a power of 2 for production.
+// 3.  Files can be any size, including zero. The code needs
+//		to handle any size file, large or small.
 type chunkReader struct {
 	file *os.File
 	fileLength int64
@@ -18,14 +44,21 @@ type chunkReader struct {
 // The supplied file will be used for reading, one chunk
 // at a time, in reverse order through the file.  The caller
 // remains responsible for closing the file.
+// Size gives the chunk size the client plans to use.  This can
+// be zero to use the default.
+// Returns the new chunkReader, the chunk size, and an error.
 // Returns a nil chunkReader if an error occurs.
-func newChunkReader(file *os.File) (* chunkReader, error) {
+func newChunkReader(file *os.File, size int) (* chunkReader, int, error) {
 	c := new(chunkReader)
 	c.file = file
-	c.chunkSize = bufio.MaxScanTokenSize
+	if size > 0 {
+		c.chunkSize = size
+	} else {
+		c.chunkSize = productionChunkSize
+	}
 	fileInfo, err := file.Stat()
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	c.fileLength = fileInfo.Size()
 
@@ -35,17 +68,17 @@ func newChunkReader(file *os.File) (* chunkReader, error) {
 		// The file is empty.  Do nothing gracefully.
 		c.nextOffset = 0
 
-	case (c.fileLength % bufio.MaxScanTokenSize) == 0:
+	case (c.fileLength % int64(c.chunkSize)) == 0:
 		// The file is exactly chunked---and not empty.
 		// The first read should get the last full chunk.
-		c.nextOffset = c.fileLength - bufio.MaxScanTokenSize
+		c.nextOffset = c.fileLength - int64(c.chunkSize)
 
 	default:
 		// The file is not exactly chunked but not empty.
 		// Let the first read get the last partial chunk.
-		c.nextOffset = c.fileLength - c.fileLength % bufio.MaxScanTokenSize
+		c.nextOffset = c.fileLength - c.fileLength % int64(c.chunkSize)
 	}
-	return c, nil
+	return c, c.chunkSize, nil
  }
 
  func (c *chunkReader) ChunkSize() int {
@@ -75,11 +108,10 @@ func (c *chunkReader) read(b []byte) (count int, err error) {
 	}
 	// Rely on the caller to set len(b) appropriately.
 	// When using ReadAt, we can request a full chunk and get
-	// the actual number of available bytes.  No need to adjust
-	// the supplied slice length.
-	// Read from the ongoing offset into the caller's slice.
-	// When reading the offset=last chunk, ReadAt can return data and EOF.
-	// That EOF needs to be ignored or the reader stops prematurely.
+	// the actual number of available bytes at the file's tail.
+	// No need to adjust the supplied slice length.
+	// =When reading the tail chunk, ReadAt can return data and EOF.
+	// That EOF needs to be ignored, or the reader stops prematurely.
 	count, err = c.file.ReadAt(b, c.nextOffset)
 	if count > 0 && err == io.EOF {
 		err = nil

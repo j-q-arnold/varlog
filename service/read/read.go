@@ -172,8 +172,15 @@ func (props *properties) writeLines(writer http.ResponseWriter) (err error) {
 	defer file.Close()
 
 	r, err = props.newReverser(file)
-	// todo check error
-	// todo: revise run, loop
-	r.run(writer)
-	return nil
+	if err != nil {
+		app.Log(app.LogError, "Create reverser error for %s: %s", props.rootedPath, err.Error())
+		return err
+	}
+	var total int
+	for r.scan() {
+		buf := r.text()
+		total += len(buf)
+		fmt.Printf("chunk: len %d, total %d\n", len(buf), total)
+	}
+	return r.err()
 }

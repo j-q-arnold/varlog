@@ -165,6 +165,7 @@ machine as the service):
 ## Authentication
 
 ## Observability
+Request ID for tracing
 
 ## Build & Deployment
 
