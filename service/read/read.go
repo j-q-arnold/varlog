@@ -189,5 +189,6 @@ func (props *properties) writeLines(writer http.ResponseWriter) (err error) {
 			app.Log(app.LogDebug, "reverser %d: '%s'", j, s)
 		}
 	}
+	app.Log(app.LogDebug, "total lines %d", total)
 	return r.err()
 }

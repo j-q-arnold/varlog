@@ -90,6 +90,12 @@ func newChunkReader(file *os.File, size int) (* chunkReader, int, error) {
 	return c.chunkSize
  }
 
+ // peekEOF indicates whether the chunker is at the end,
+ // and the next read will return EOF.
+ func (c *chunkReader) peekEOF() bool {
+	return c.fileLength == 0 || c.nextOffset < 0
+ }
+
 // Reads the next chunk from the file, if one exists.
 // Important constraint on the supplied slice: b.
 // The slice length, len(b), should consistent throughout
@@ -98,8 +104,7 @@ func newChunkReader(file *os.File, size int) (* chunkReader, int, error) {
 // The caller controls the slice capacity (in case the data will
 // be extended).
 // The return count is the number of bytes actually read.
-// An error of EOF indicates end of file.  This might accompany
-// the last non-empty read or a final read returning zero bytes.
+// A count of zero and error of EOF indicate end of file.
 func (c *chunkReader) read(b []byte) (count int, err error) {
 	// Handle special cases first: Nothing to read or EOF.
 	// Note the code below sets nextOffset negative after
@@ -123,7 +128,7 @@ func (c *chunkReader) read(b []byte) (count int, err error) {
 	}
 	// Subtlety: Always back up the offset by the chunk size.
 	// The first pass reads a partial chunk at the end of the file,
-	// but we want to back up a full chunk after that, NOT the read count.
+	// but we want to back up a full chunk, NOT the read count.
 	// This relies on the caller supplying the same slice size for the
 	// next read.
 	c.nextOffset -= int64(len(b))

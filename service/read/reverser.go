@@ -45,23 +45,47 @@ const (
 //		a prefix in the preceding chunk, which will not have been
 //		read yet.
 // 3.  The possibility of a continuation condition for the first
-//		chunk line itself has some edge cases. A) The last line in the
-//		preceding chunk ends precisely at the last byte, thus the
-//		"suffix" line is actually a complete line. B) The newline
-//		for the last line in the preceding chunk occurs at the
-//		first byte in the current chunk. This gives the appearance
-//		of a zero-length suffix.
+//		chunk line itself has some edge cases. Details below.
 // 4.  File formats are not constrained. Lines might be short or
 //		long; the code should present what it finds. This uses
 //		bufio for scanning, which imposes bufio.MaxTokenScanSize
 //		as the maximum token (line) size.  We'll live with that.
 type reverser struct {
-	chunker *chunkReader
-	chunkSize int
-	chunk []byte
-	lastError error
+	chunker    *chunkReader	// Reads file chunks in reverse order
+	chunkSize  int			// Active chunk size for this reverser
+	chunk      []byte		// Bytes read for processing
+	lastError  error		// The last error encountered
+	lineSuffix []byte		// Handles cross-chunk line splits.  Details below
 }
 
+/* Notes about cross-chunk line handling.
+ * Chunks are read in reverse order.  This uses numbering for clarity,
+ * where chunks appear in natural increasing order: n-1, n, n+1, etc.
+ * The chunk reader presents the chunks in order n, n-1, n-2, etc.
+ * The first line of chunk n might be a continuation of the last
+ * line of chunk n-1.  That potential suffix text has several edge
+ * cases that must be handled.
+ * a) The last line in n-1 has a newline in the last byte.  Thus the
+ *		last line and the suffix lines represent two lines, not one.
+ * b) The first byte of chunk n is a newline. The bufio scanner presents
+ *		this as an empty line. This causes ambiguity when reading n-1.
+ *		If n-1's last byte is a newline, this condition should give
+ *		two lines, not one.
+ *		Long story short, this suffix must append a newline, not the
+ *		empty string from bufio.
+ *
+ * Summary for handling block n.
+ * - If the first line is empty, use "\n" as the suffix.
+ * - If the first line is not empty, use it unmodifed as the suffix.
+ *
+ * Save the resulting suffix for processing chunk n-1. Append the suffix to
+ * the n-1 chunk and hand that to bufio for line scanning.
+ */
+
+// newReverser allocates a new object and initializes it to read
+// the supplied file. Note the reverser uses a chunkReader for low-level
+// input. This reads the file backwards with io.ReadAt, which is not
+// available from a simple Reader interface.
 func (props *properties) newReverser(file *os.File) (r *reverser, err error) {
 	r = new(reverser)
 	r.chunker, r.chunkSize, err = newChunkReader(file, props.chunkSize)
@@ -83,6 +107,26 @@ func (r *reverser) err() error {
 	return r.lastError
 }
 
+func (r *reverser) handleLineSuffix(lines *[]string) {
+	// If the chunker is done, leave lines[0] alone.
+	if r.chunker.peekEOF() {
+		return
+	}
+	// Save the first line as the suffix for the next chunk.
+	// The entries in lines are new strings from scanner.Text()
+	// and safe to use later.  Copy unnecessary.
+	if len(*lines) == 0 {
+		r.lineSuffix = []byte{}
+	} else {
+		s := (*lines)[0]
+		if s == "" {
+			s = "\n"
+		}
+		r.lineSuffix = []byte(s)
+	}
+	(*lines) = (*lines)[1:]
+}
+
 // Extracts lines from the last chunk read from the file.
 func (r *reverser) lines() []string {
 	var lines []string
@@ -100,6 +144,8 @@ func (r *reverser) lines() []string {
 	for scanner.Scan() {
 		lines = append(lines, scanner.Text())
 	}
+	r.handleLineSuffix(&lines)
+
 	// Reverse the lines
 	for i, j := 0, len(lines) - 1; i < j; i, j = i + 1, j - 1 {
 		lines[i], lines[j] = lines[j], lines[i]
@@ -119,8 +165,11 @@ func (r *reverser) scan() bool {
 	if r.lastError != nil {
 		return false
 	}
-	r.chunk = make([]byte, r.chunkSize)
+	r.chunk = make([]byte, r.chunkSize, r.chunkSize + len(r.lineSuffix))
 	n, r.lastError = r.chunker.read(r.chunk)
 	r.chunk = r.chunk[0:n]
+	if len(r.lineSuffix) > 0 {
+		r.chunk = append(r.chunk, r.lineSuffix...)
+	}
 	return r.lastError == nil
 }
