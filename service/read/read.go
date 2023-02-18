@@ -135,6 +135,18 @@ func (props *properties) extractParams(request *http.Request) (err error) {
 	return nil
 }
 
+func (props *properties) filterAllowsEntry(name string) bool {
+	// An empty filter allows all entries
+	if props.filterText == "" {
+		return true
+	}
+	if strings.Contains(name, props.filterText) {
+		return !props.filterOmit
+	}
+	// Filter text is non-empty and did not match.
+	return props.filterOmit
+}
+
 // Check the client's parameters for validity.  This is mainly
 // syntactic checking, without consulting the file system.
 func (props *properties) validateParams() (err error) {
@@ -182,11 +194,18 @@ func (props *properties) writeLines(writer http.ResponseWriter) (err error) {
 		return err
 	}
 	var total int
+countLabel:
 	for r.scan() {
 		lines := r.lines()
-		total += len(lines)
-		for j, s := range lines {
-			app.Log(app.LogDebug, "reverser %d: '%s'", j, s)
+		for _, s := range lines {
+			if !props.filterAllowsEntry(s) {
+				continue
+			}
+			fmt.Fprintln(writer, s)
+			total++
+			if props.count > 0 && total >= props.count {
+				break countLabel
+			}
 		}
 	}
 	app.Log(app.LogDebug, "total lines %d", total)

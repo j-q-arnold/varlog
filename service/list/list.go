@@ -181,7 +181,7 @@ func (props *properties) extractParams(request *http.Request) (err error) {
 	return nil
 }
 
-func (props *properties) filterIncludesEntry(name string) bool {
+func (props *properties) filterAllowsEntry(name string) bool {
 	// An empty filter allows all entries
 	if props.filterText == "" {
 		return true
@@ -207,7 +207,7 @@ func (props *properties) listDir() (data []*metadata, err error) {
 	// Note that os.ReadDir returns a sorted list.  Sorting the resulting
 	// metadata array is thus unnecessary.
 	for _, file := range files {
-		if !props.filterIncludesEntry(file.Name()) {
+		if !props.filterAllowsEntry(file.Name()) {
 			continue
 		}
 		fullPath := path.Join(props.rootedPath, file.Name())
@@ -238,7 +238,7 @@ func (props *properties) listDir() (data []*metadata, err error) {
 func (props *properties) listFile() (data []*metadata, err error) {
 	// Need to initialize data away from nil
 	data = []*metadata{}
-	if !props.filterIncludesEntry(props.name) {
+	if !props.filterAllowsEntry(props.name) {
 		return data, nil
 	}
 	m := new(metadata)
