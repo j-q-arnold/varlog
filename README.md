@@ -76,6 +76,13 @@ This section provides the details of each endpoint.
       against this limit.
       If this parameter is non-positive or not present, all qualifying
       lines appear in the response body.
+    * `content-disposition=`_value_
+      Optional.
+      This gives the option of specifying how to prepare the output:
+      to show `inline` or to save as a download `attachment`.
+      If omitted or empty, the server decides, based on the expected
+      size of the results.  Small results are shown inline; large results
+      are downloaded.
   * Response.
     The body of the response contains the selected lines, one line from
     the file per line in the response.
