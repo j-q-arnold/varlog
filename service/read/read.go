@@ -25,6 +25,14 @@ import (
 	"varlog/service/app"
 )
 
+const (
+	// Values to decide whether to use inline or attachment results.
+	// If the line count is specified and "small", use inline.
+	// If the file size is "small", use inline.
+	attachFileSize = 100000
+	attachLineCount = 10000
+)
+
 // Provides the top-level handler, as called by the HTTP listener.
 // Controls overall flow for the endpoint: gather parameters,
 // perform the endpoint's actions, write the response.
@@ -44,11 +52,47 @@ func Handler(writer http.ResponseWriter, request *http.Request) {
 		http.Error(writer, err.Error(), http.StatusBadRequest)
 		return
 	}
+
 	writeLines(props, writer)
 	fmt.Fprintf(writer, "endpoint: read\n")
 	fmt.Fprintf(writer, "method %s, full path %q, proto %s\n",
 		request.Method, props.RootedPath(), request.Proto)
 	fmt.Fprintf(writer, "Done\n")
+}
+
+// selectContentDisposition optionally adds a "Content-Disposition" header to the response.
+// If the response is likely to be large, this directs the client to save
+// the results in a file instead of displaying directly. If any errors occur,
+// they are ignored and no header is written.  Note this does not use the filter
+// in the decision.  That obviously affects the result line count, but there's
+// no way to know the filter's likely effect.  And the header needs to be
+// written before the result's actual line count is known.
+// The header to be added:
+//		Content-Disposition: attachment; filename="name"
+func selectContentDisposition(props *app.Properties, writer http.ResponseWriter, file *os.File) {
+	switch props.ParamContentDisposition() {
+	case app.HdrInline:
+		return
+
+	case app.HdrAttachment:
+		break;
+
+	default:
+		if props.ParamCount() > 0 && props.ParamCount() < attachLineCount {
+			return
+		}
+		fileInfo, err := file.Stat()
+		if err != nil {
+			return
+		}
+		fileSize := fileInfo.Size()
+		if fileSize < attachFileSize {
+			return
+		}
+	}
+	s := fmt.Sprintf("%s; %s=%q", app.HdrAttachment, app.HdrFilename, props.BasePath())
+	header := writer.Header()
+	header.Add(app.HdrContentDisposition, s)
 }
 
 func writeLines(props *app.Properties, writer http.ResponseWriter) (err error) {
@@ -59,6 +103,8 @@ func writeLines(props *app.Properties, writer http.ResponseWriter) (err error) {
 		return err
 	}
 	defer file.Close()
+
+	selectContentDisposition(props, writer, file)
 
 	r, err = newReverser(props, file)
 	if err != nil {

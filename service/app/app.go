@@ -16,11 +16,19 @@ import (
 
 const (
 	Application = "varlog"  // The application name
+
+	// Strings for HTTP response headers
+	HdrAttachment = "attachment"
+	HdrContentDisposition = "Content-Disposition"
+	HdrFilename = "filename"
+	HdrInline = "inline"
+
 	LogDebug    = "DEBUG"   // log level: DEBUG
 	LogError    = "ERROR"   // log level: ERROR
 	LogInfo     = "INFO"    // log level: INFO
 	LogWarning  = "WARNING" // log level: WARNING
 
+	ParamContentDisposition = "content-disposition" // name of 'content-disposition' parameter
 	ParamCount  = "count"  // Name of the 'count' parameter
 	ParamFilter = "filter" // Name of the 'filter' parameter
 	ParamName   = "name"   // Name of the 'name' parameter
@@ -44,6 +52,7 @@ type Properties struct {
 	chunkSize  int    // Chunk size to read from log file
 	filterOmit bool   // True if filter text originally had '-'
 	filterText string // Filter parameter from request, '-' stripped
+	paramContentDisposition string // Desired "Content-Disposition" value
 	paramCount int    // Maximum lines to return to client
 	paramName  string // Name parameter from request
 	root       string // Log directory root.  No trailing slash.
@@ -61,6 +70,12 @@ func NewProperties() (p *Properties) {
 	p = new(Properties)
 	*p = properties
 	return p
+}
+
+// BasePath returns the last component (base name) of the
+// current request's path.  "/var/log/abc" => "abc".
+func (p *Properties) BasePath() string {
+	return path.Base(p.rootedPath)
 }
 
 // ChunkSize provides the chunk size to read from log files.
@@ -88,8 +103,27 @@ func (props *Properties) ExtractParams(request *http.Request) (err error) {
 	// generates map["a"] == [ "v1", "v2" ]
 	for key, value := range request.Form {
 		switch key {
+		case ParamContentDisposition:
+			if len(value) == 0 {
+				break
+			}
+			switch value[0] {
+			case "", HdrInline, HdrAttachment:
+				props.paramContentDisposition = value[0]
+
+			default:
+				err = errors.New(
+					fmt.Sprintf("Invalid value %s=%q", ParamContentDisposition, value[0]))
+				Log(LogWarning, "%s", err.Error())
+				return err
+			}
+
 		case ParamCount:
 			if len(value) == 0 {
+				break
+			}
+			if value[0] == "" {
+				props.paramCount = 0
 				break
 			}
 			if props.paramCount, err = strconv.Atoi(value[0]); err != nil {
@@ -163,6 +197,13 @@ func (p *Properties) SetFilterText(s string) {
 // The value is the empty string if the parameter was not present.
 // For matching purposes, a nil/empty value means no filtering
 // happens, and all entries qualify for inclusion in results.
+
+// ParamContentDisposition gives the value for any "Content-Disposition"
+// header.  The default, empty string, leaves the value up to the server.
+// The client can provide an explicit value: "inline" or "attachment".
+func (p *Properties) ParamContentDisposition() string {
+	return p.paramContentDisposition
+}
 
 // ParamCount provides the 'count' parameter's value.  If the
 // request did not have the parameter, the value is zero.
