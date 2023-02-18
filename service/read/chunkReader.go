@@ -3,14 +3,7 @@ package read
 import (
 	"io"
 	"os"
-	_ "varlog/service/app"
-)
-
-const (
-	// The size of chunks read from the file in one Read operation.
-	// This can be adjusted for file system performance, typical
-	// log file size and host environment.
-	productionChunkSize = 64 * 1024
+	"varlog/service/app"
 )
 
 // This code read a file backwards.  As a log file
@@ -36,34 +29,30 @@ const (
 // 3.  Files can be any size, including zero. The code needs
 //		to handle any size file, large or small.
 type chunkReader struct {
-	file *os.File
+	file       *os.File
 	fileLength int64
 	nextOffset int64
-	chunkSize int
-	lastError error
+	chunkSize  int
+	lastError  error
 }
 
 // Allocates a new chunkReader and initializes it for use.
 // The supplied file will be used for reading, one chunk
 // at a time, in reverse order through the file.  The caller
 // remains responsible for closing the file.
-// Size gives the chunk size the client plans to use.  This can
-// be zero to use the default.  Note the caller of the chunk reader
+// The properties give the chunk size the client plans to use.
+// Note the caller of the chunk reader
 // needs to supply a read buffer to hold chunk data.  That
 // buffer should conform to the actual size being used.
-// Returns the new chunkReader, the chunk size, and an error.
+// Returns the new chunkReader and an error.
 // Returns a nil chunkReader if an error occurs.
-func newChunkReader(file *os.File, size int) (* chunkReader, int, error) {
+func newChunkReader(p *app.Properties, file *os.File) (*chunkReader, error) {
 	c := new(chunkReader)
 	c.file = file
-	if size > 0 {
-		c.chunkSize = size
-	} else {
-		c.chunkSize = productionChunkSize
-	}
+	c.chunkSize = p.ChunkSize()
 	fileInfo, err := file.Stat()
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 	c.fileLength = fileInfo.Size()
 
@@ -81,20 +70,16 @@ func newChunkReader(file *os.File, size int) (* chunkReader, int, error) {
 	default:
 		// The file is not exactly chunked but not empty.
 		// Let the first read get the last partial chunk.
-		c.nextOffset = c.fileLength - c.fileLength % int64(c.chunkSize)
+		c.nextOffset = c.fileLength - c.fileLength%int64(c.chunkSize)
 	}
-	return c, c.chunkSize, nil
- }
+	return c, nil
+}
 
- func (c *chunkReader) ChunkSize() int {
-	return c.chunkSize
- }
-
- // peekEOF indicates whether the chunker is at the end,
- // and the next read will return EOF.
- func (c *chunkReader) peekEOF() bool {
+// peekEOF indicates whether the chunker is at the end,
+// and the next read will return EOF.
+func (c *chunkReader) peekEOF() bool {
 	return c.fileLength == 0 || c.nextOffset < 0
- }
+}
 
 // Reads the next chunk from the file, if one exists.
 // Important constraint on the supplied slice: b.
@@ -134,4 +119,4 @@ func (c *chunkReader) read(b []byte) (count int, err error) {
 	c.nextOffset -= int64(len(b))
 	c.lastError = err
 	return count, c.lastError
- }
+}

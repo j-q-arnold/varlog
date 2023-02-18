@@ -1,18 +1,19 @@
 package list
 
 import (
-	"path"
+	_ "path"
 	"testing"
+	"varlog/service/app"
 )
 
 const (
 	Root = "/var/log"
 )
 
-func buildProperties(name string) *properties {
-	props := new(properties)
-	props.name = name
-	props.rootedPath = path.Join(Root, name)
+func buildProperties(name string) *app.Properties {
+	app.SetRoot(Root)
+	props := app.NewProperties()
+	props.SetParamName(name)
 	return props
 }
 
@@ -41,7 +42,7 @@ func TestListDir_posFilter(t *testing.T) {
 
 func TestListFile_nilFilter(t *testing.T) {
 	props := buildProperties("name")
-	data, err := props.listFile()
+	data, err := listFile(props)
 	if err != nil {
 		t.Errorf("expected nil error, got %v\n", err)
 	}
@@ -55,9 +56,9 @@ func TestListFile_nilFilter(t *testing.T) {
 
 func TestListFile_negFilter(t *testing.T) {
 	props := buildProperties("name")
-	props.filterText = "n"
-	props.filterOmit = true
-	data, err := props.listFile()
+	props.SetFilterText("n")
+	props.SetFilterOmit(true)
+	data, err := listFile(props)
 	if err != nil {
 		t.Errorf("expected nil error, got %v\n", err)
 	}
@@ -65,8 +66,8 @@ func TestListFile_negFilter(t *testing.T) {
 		t.Errorf("expected data len 0, got %d\n", len(data))
 	}
 
-	props.filterText = "z"
-	data, err = props.listFile()
+	props.SetFilterText("z")
+	data, err = listFile(props)
 	if err != nil {
 		t.Errorf("expected nil error, got %v\n", err)
 	}
@@ -80,9 +81,9 @@ func TestListFile_negFilter(t *testing.T) {
 
 func TestListFile_posFilter(t *testing.T) {
 	props := buildProperties("name")
-	props.filterText = "z"
-	props.filterOmit = false
-	data, err := props.listFile()
+	props.SetFilterText("z")
+	props.SetFilterOmit(false)
+	data, err := listFile(props)
 	if err != nil {
 		t.Errorf("expected nil error, got %v\n", err)
 	}
@@ -90,8 +91,8 @@ func TestListFile_posFilter(t *testing.T) {
 		t.Errorf("expected data len 0, got %d\n", len(data))
 	}
 
-	props.filterText = "a"
-	data, err = props.listFile()
+	props.SetFilterText("a")
+	data, err = listFile(props)
 	if err != nil {
 		t.Errorf("expected nil error, got %v\n", err)
 	}
@@ -119,28 +120,22 @@ func TestStripRootPrefix(t *testing.T) {
 
 func TestValidateParams(t *testing.T) {
 	props := buildProperties("a/b/c")
-	err := props.validateParams()
-	if err != nil {
-		t.Errorf("Expected nil, got %v", err)
-	}
 	expected := Root + "/" + "a/b/c"
-	if props.rootedPath != expected {
-		t.Errorf("Expected path %q, got %q", expected, props.rootedPath)
+	if props.RootedPath() != expected {
+		t.Errorf("Expected path %q, got %q", expected, props.RootedPath())
 	}
 
-	props.name = "//./x/./y"
-	err = props.validateParams()
+	err := props.SetParamName("//./x/./y")
 	if err != nil {
 		t.Errorf("Expected error but got %v", err)
 	}
 	expected = Root + "/" + "x/y"
-	if props.rootedPath != expected {
-		t.Errorf("Expected path %q, got %q", expected, props.rootedPath)
+	if props.RootedPath() != expected {
+		t.Errorf("Expected path %q, got %q", expected, props.RootedPath())
 	}
 
-	props.name = "../../x/y"
-	err = props.validateParams()
+	err = props.SetParamName("../../x/y")
 	if err == nil {
-		t.Errorf("Expected error but got nil, path %q", props.rootedPath)
+		t.Errorf("Expected error but got nil, path %q", props.RootedPath())
 	}
 }

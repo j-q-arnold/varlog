@@ -51,11 +51,11 @@ const (
 //		bufio for scanning, which imposes bufio.MaxTokenScanSize
 //		as the maximum token (line) size.  We'll live with that.
 type reverser struct {
-	chunker    *chunkReader	// Reads file chunks in reverse order
-	chunkSize  int			// Active chunk size for this reverser
-	chunk      []byte		// Bytes read for processing
-	lastError  error		// The last error encountered
-	lineSuffix []byte		// Handles cross-chunk line splits.  Details below
+	props      *app.Properties // The application properties
+	chunker    *chunkReader    // Reads file chunks in reverse order
+	chunk      []byte          // Bytes read for processing
+	lastError  error           // The last error encountered
+	lineSuffix []byte          // Handles cross-chunk line splits.  Details below
 }
 
 /* Notes about cross-chunk line handling.
@@ -86,11 +86,12 @@ type reverser struct {
 // the supplied file. Note the reverser uses a chunkReader for low-level
 // input. This reads the file backwards with io.ReadAt, which is not
 // available from a simple Reader interface.
-func (props *properties) newReverser(file *os.File) (r *reverser, err error) {
+func newReverser(props *app.Properties, file *os.File) (r *reverser, err error) {
 	r = new(reverser)
-	r.chunker, r.chunkSize, err = newChunkReader(file, props.chunkSize)
+	r.props = props
+	r.chunker, err = newChunkReader(props, file)
 	if err != nil {
-		app.Log(app.LogError, "Nil chunk reader for %s: %s", props.rootedPath, err.Error())
+		app.Log(app.LogError, "Nil chunk reader for %s: %s", props.RootedPath(), err.Error())
 		return nil, err
 	}
 	return r, nil
@@ -147,7 +148,7 @@ func (r *reverser) lines() []string {
 	r.handleLineSuffix(&lines)
 
 	// Reverse the lines
-	for i, j := 0, len(lines) - 1; i < j; i, j = i + 1, j - 1 {
+	for i, j := 0, len(lines)-1; i < j; i, j = i+1, j-1 {
 		lines[i], lines[j] = lines[j], lines[i]
 	}
 	return lines
@@ -165,7 +166,7 @@ func (r *reverser) scan() bool {
 	if r.lastError != nil {
 		return false
 	}
-	r.chunk = make([]byte, r.chunkSize, r.chunkSize + len(r.lineSuffix))
+	r.chunk = make([]byte, r.props.ChunkSize(), r.props.ChunkSize()+len(r.lineSuffix))
 	n, r.lastError = r.chunker.read(r.chunk)
 	r.chunk = r.chunk[0:n]
 	if len(r.lineSuffix) > 0 {
