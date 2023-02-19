@@ -304,8 +304,7 @@ lines, consecutive empty lines, and empty lines at the start
 and end of the file.
 If the line reversal code had defects, `-chunk=1` would help expose them.
 
-A final note about `log-nl`.
-Streaming this file to the browser makes it difficult to
+Streaming this `log-nl` to the browser makes it difficult to
 see the empty lines.
 One can use the URL query parameter, `content-disposition=attachment`,
 to force a download.
