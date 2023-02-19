@@ -183,7 +183,7 @@ Here are the minimal steps.
 ## Command Line Options
 The server has a few command line options that control its behavior.
 The default configuration would work on a typical linux machine,
-but the following change behavior in useful ways for testing and development.
+but the options change behavior in useful ways for testing and development.
 
 * `-port NUMBER` \
   Sets the port on which the server listens.
@@ -269,7 +269,7 @@ These are made to resemble actual log files, with some tweaks:
 * Application tags, `aaaaa` and such, can be filtered.  One might
   Want to retrieve only lines related to a specific application.
 * Every line in the file has a unique sequence number, starting at zero.
-  When filtering lines or counting, one can use the sequence number to
+  When filtering or counting lines, one can use the sequence number to
   confirm data are as expected.
 * Message levels, `ERROR` and such, also are useful filters.
 
@@ -349,6 +349,13 @@ $ $REPO/cmd/genalpha/genalpha 5000 >alpha-5k	# 5K chars, no lines
 
 Note the `genlog` command uses the `log` facility, which writes
 to standard error (thus `2>log-10`).
+
+For testing large files, use `genlog` to create a suitable file.
+Because of the file size, this is not in git.
+```
+$ $REPO/cmd/genlog/genlog 50000000 2>log-50M	# log file, 50M lines
+```
+This will take a few minutes to run and create a 3.7GB file.
 
 # Design Issues
 
