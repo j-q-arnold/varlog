@@ -6,6 +6,7 @@
   * [Building and Running the Service](#building-and-running-the-service)
 * [`/var/log` Client](#varlog-client)
 * [Logging](#logging)
+* [Test Data](#test-data)
 * [Design Issues](#design-issues)
   * [Resource Model](#resource-model)
   * [Service API](#service-api)
@@ -182,6 +183,7 @@ Some example addresses follow, assuming the browser runs
 on the same machine as the service.
 This also assume you have started the service as above,
 using the repository's test data.
+See [Test Data](#test-data) below for details.
 
 * `http://localhost:8000/list` \
   List all the files and directories directly under `/var/log`.
@@ -214,20 +216,52 @@ Log messages are written to standard error for this program.
 * `DEBUG`: Temporary notes or other messages.
 
 
+# Test Data
+
+
+
 # Design Issues
 
-## Resource Model
+One could design a resource model to mirror `/var/log` (or a
+file system in general).
+That was not the problem here, but it could provide a more
+general API for program-to-program communication.
 
-## Service API
+An extended service model also would support other HTTP methods.
+Services often use messages such as PUT/POST with request bodies,
+allowing JSON flexibility in addition to query parameters.
 
-## Authentication
+An actual service also might need authentication, depending
+on the network routing and service visibility.
 
 ## Observability
-Request ID for tracing
+A production system should provide monitoring metrics.
+Some of this could be standard kubernetes health check probes.
+Individual requests should provide a context identifier,
+tagging log entries to enable start-to-finish tracing.
 
 ## Build & Deployment
+The build here is rudimentary.
+Integrated into a team's build structure, github activity
+would trigger automatic builds, run tests, push images to
+container registries, etc.
 
 ## Performance Enhancements
-* Index file, record lines, update cache
-* compress response body for "large" responses
-* chunking
+First, any performance work should measure the service
+and find any bottlenecks.
+Here are a few ideas of what might happen and how one
+might address those concerns.
+
+* Compress the response bodies.
+  Depending on the frequency of large responses, one might
+  compress the response bodies.  This is not likely to help
+  if 99% of all requests use small line counts, but it might
+  work for large responses.
+* Too many accesses to the same data.
+  The system has some overhead to read and reverse lines.
+  If "typical" files changed infrequently, one might consider
+  indexing or caching the reversed data, reusing reversed
+  files multiple times.  (Typical log files would change
+  frequently, so this is not likely to be a real possibility.)
+* File system issues.  One could increase (or decrease) the internal
+  "chunk" size to reduce file system overhead.
