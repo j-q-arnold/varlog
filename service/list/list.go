@@ -86,7 +86,7 @@ func Handler(writer http.ResponseWriter, request *http.Request) {
 func collectMetadata(props *app.Properties) (data []*metadata, err error) {
 	fileInfo, err := os.Stat(props.RootedPath())
 	if err != nil {
-		app.Log(app.LogWarning, "Path %s invalid, %s", props.RootedPath(), err.Error())
+		app.Log(app.LogWarning, "Path %q invalid, %s", props.RootedPath(), err.Error())
 		return nil, err
 	}
 	mode := fileInfo.Mode()

@@ -84,6 +84,8 @@ var properties = Properties{
 func NewProperties() (p *Properties) {
 	p = new(Properties)
 	*p = properties
+	// Force computation of the rooted path with active root
+	p.SetParamName(p.paramName)
 	return p
 }
 

@@ -42,6 +42,11 @@ func DoCli() {
 func parseFlags() {
 	flag.Parse()
 
+	if Cli.help {
+		usage()
+		os.Exit(0)
+	}
+
 	switch {
 	case Cli.Chunk < 0:
 		fmt.Fprintf(flag.CommandLine.Output(), "*** Chunk size (%d) cannot be negative.\n", Cli.Chunk)
@@ -72,11 +77,6 @@ func parseFlags() {
 	if err != nil || !fileInfo.Mode().IsDir() {
 		fmt.Fprintf(flag.CommandLine.Output(), "*** Root (%s) is not a directory.\n", Cli.Root)
 		os.Exit(1)
-	}
-
-	if Cli.help {
-		usage()
-		os.Exit(0)
 	}
 }
 

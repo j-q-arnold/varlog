@@ -24,6 +24,7 @@
 package read
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -57,11 +58,36 @@ func Handler(writer http.ResponseWriter, request *http.Request) {
 		http.Error(writer, err.Error(), http.StatusBadRequest)
 		return
 	}
+	err = checkRegularFile(props)
+	if err != nil {
+		app.Log(app.LogWarning, "%s", err.Error())
+		http.Error(writer, err.Error(), http.StatusBadRequest)
+		return
+	}
 
 	err = writeLines(props, writer)
 	if err != nil {
 		http.Error(writer, err.Error(), http.StatusBadRequest)
 	}
+}
+
+func checkRegularFile(props *app.Properties) error {
+	fileInfo, err := os.Stat(props.RootedPath())
+	if err != nil {
+		return errors.New(fmt.Sprintf("Path %q invalid, %s", props.RootedPath(), err.Error()))
+	}
+	mode := fileInfo.Mode()
+	switch {
+	case mode.IsDir():
+		return errors.New(fmt.Sprintf("Read directory %q not allowed", props.RootedPath()))
+
+	case mode.IsRegular():
+		break
+
+	default:
+		return errors.New(fmt.Sprintf("Read special file %q not allowed", props.RootedPath()))
+	}
+	return nil
 }
 
 // selectContentDisposition optionally adds a "Content-Disposition" header to the response.

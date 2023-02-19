@@ -152,15 +152,15 @@ Here are the minimal steps.
   variable holding the path to the `varlog` repository.
   Example, though you'll need to set this according to your machine.
   ```
-  export REPO=$HOME/varlog
+  $ export REPO=$HOME/varlog
   ```
 
 * Change directory to the top-level of the git repository.
   ```
-  $ cd service/varlog-srv
+  $ cd $REPO/service/varlog-srv
   $ go build .
   ```
-  This build the executable: `varlog-srv` (or `varlog-srv.exe` for Windows).
+  This builds the executable: `varlog-srv` (or `varlog-srv.exe` for Windows).
 
 * Run the program.  This defaults to listening on port 8000, but you
   can change that if another server is listening there.
@@ -170,25 +170,49 @@ Here are the minimal steps.
   ```
 
 * If you are running on Windows or want to use local log files,
-  redirect the root to
+  redirect the root to local test data:
+  ```
+  $ ./varlog-srv -root $REPO/testdata/var/log
+  ```
 
 # `/var/log` Client
 
 A web browser can be used to exercise the service.
-Some example addresses follow (running on the same
-machine as the service):
+Some example addresses follow, assuming the browser runs
+on the same machine as the service.
+This also assume you have started the service as above,
+using the repository's test data.
 
-* `http://localhost:8000/list?filter=syslog` \
+* `http://localhost:8000/list` \
+  List all the files and directories directly under `/var/log`.
+* `http://localhost:8000/list?filter=log` \
   List all the files and directories directly under `/var/log`
-  that have `syslog` in the name.
-* `http://localhost:8000/read?name=syslog-saturn-2023-01-31&filter=ERROR&count=100` \
-  Read the 100 latest `ERROR` messages from `syslog-saturn-2023-01-31`.
-* `http://localhost:8000/read?name=syslog-saturn-2023-01-31&filter=-INFO&count=100` \
+  that have `log` in the name.
+* `http://localhost:8000/list?filter=-log` \
+  List all the files and directories directly under `/var/log`
+  that do not have `log` in the name.
+* `http://localhost:8000/read?name=log-100&filter=ERROR&count=10` \
+  Read the 10 latest `ERROR` messages from `log-100`.
+* `http://localhost:8000/read?name=log-100&filter=-INFO&count=10` \
   Similar to the previous example, except this allows lines _except_
   the `INFO` entries.
+* `http://localhost:8000/read?name=log-1M&count=10` \
+  In this example, `log-1M` has 1 million lines (75MB file size).
+  This caps the line count at 10 and results stream to the browser.
+* `http://localhost:8000/read?name=log-1M` \
+  This example also uses `log-1M` but requests the entire file.
+  The server automatically applies a `Content-Disposition` header to
+  download a file instead of displaying inline.
 
 
 # Logging
+Log messages are written to standard error for this program.
+* `ERROR`: used for internal errors, things that should not happen.
+* `WARNING`: Anything that could be caused by the client request:
+  invalid name, bad parameter value, etc.
+* `INFO`: Normal activity logging by the application.
+* `DEBUG`: Temporary notes or other messages.
+
 
 # Design Issues
 
