@@ -282,6 +282,28 @@ A few interesting things one can try with these files.
 * Filter on the sequence number, such as `filter=0000`,
   to see one of every 10,000 lines.
 
+A final note about file "chunking".
+Reading a file backwards presents a challenge when a line
+spans two chunks.
+The line suffix is read first (chunk N), the line prefix
+is read next (chunk N-1), and the pieces must be spliced together
+to form a complete line.
+There are further complications for empty lines,
+lines that span multiple chunks,
+or when a newline is exactly at the end or beginning of a chunk
+(or both).
+Depending on the line length and the chunk size, these conditions
+can be hard to enumerate and to test.
+
+Thus the `-chunk` parameter lets one adjust the internal behavior
+to suit the test data in hand.
+A useful trick is to set `-chunk=1`, ensuring even "simple" input
+files will exercise interesting boundary conditions.
+The `log-nl` file has only a few lines, but they include empty
+lines, consecutive empty lines, and empty lines at the start
+and end of the file.
+If the line reversal code had defects, `-chunk=1` would help expose them.
+
 # Design Issues
 
 One could design a resource model to mirror `/var/log` (or a
