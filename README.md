@@ -343,8 +343,8 @@ $ go build .
 
 Generating data:
 ```
-$ $REPO/cmd/genlog/genlog 10 2>log-10
-$ $REPO/cmd/genalpha/genalpha 5000 >alpha-5k
+$ $REPO/cmd/genlog/genlog 10 2>log-10	# log file, 10 lines
+$ $REPO/cmd/genalpha/genalpha 5000 >alpha-5k	# 5K chars, no lines
 ```
 
 Note the `genlog` command uses the `log` facility, which writes
