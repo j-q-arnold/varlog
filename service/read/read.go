@@ -28,6 +28,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"time"
 	"varlog/service/app"
 )
 
@@ -43,6 +44,11 @@ const (
 // Controls overall flow for the endpoint: gather parameters,
 // perform the endpoint's actions, write the response.
 func Handler(writer http.ResponseWriter, request *http.Request) {
+	var t0 = time.Now()
+	var totalLines int
+	defer func () {
+		app.Log(app.LogInfo, "/read %d lines, %v", totalLines, time.Since(t0))
+	}()
 	var props *app.Properties = app.NewProperties()
 
 	app.Log(app.LogInfo, "%q", request.URL)
@@ -65,7 +71,7 @@ func Handler(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	err = writeLines(props, writer)
+	totalLines, err = writeLines(props, writer)
 	if err != nil {
 		http.Error(writer, err.Error(), http.StatusBadRequest)
 	}
@@ -126,12 +132,12 @@ func selectContentDisposition(props *app.Properties, writer http.ResponseWriter,
 	header.Add(app.HdrContentDisposition, s)
 }
 
-func writeLines(props *app.Properties, writer http.ResponseWriter) (err error) {
+func writeLines(props *app.Properties, writer http.ResponseWriter) (totalLines int, err error) {
 	var r *reverser
 	file, err := os.Open(props.RootedPath())
 	if err != nil {
 		app.Log(app.LogWarning, "Cannot open %s: %s", props.RootedPath(), err.Error())
-		return err
+		return 0, err
 	}
 	defer file.Close()
 
@@ -140,9 +146,8 @@ func writeLines(props *app.Properties, writer http.ResponseWriter) (err error) {
 	r, err = newReverser(props, file)
 	if err != nil {
 		app.Log(app.LogError, "Create reverser error for %s: %s", props.RootedPath(), err.Error())
-		return err
+		return 0, err
 	}
-	var total int
 countLabel:
 	for r.scan() {
 		lines := r.lines()
@@ -151,12 +156,11 @@ countLabel:
 				continue
 			}
 			fmt.Fprintln(writer, s)
-			total++
-			if props.ParamCount() > 0 && total >= props.ParamCount() {
+			totalLines++
+			if props.ParamCount() > 0 && totalLines >= props.ParamCount() {
 				break countLabel
 			}
 		}
 	}
-	app.Log(app.LogInfo, "Read %q, %d lines", props.RootedPath(), total)
-	return r.err()
+	return totalLines, r.err()
 }

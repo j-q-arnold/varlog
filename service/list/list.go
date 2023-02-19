@@ -24,6 +24,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"time"
 	"varlog/service/app"
 )
 
@@ -38,6 +39,10 @@ type metadata struct {
 // Controls overall flow for the endpoint: gather parameters,
 // perform the endpoint's actions, write the response.
 func Handler(writer http.ResponseWriter, request *http.Request) {
+	var t0 = time.Now()
+	defer func () {
+		app.Log(app.LogInfo, "/list %v", time.Since(t0))
+	}()
 	var props *app.Properties = app.NewProperties()
 
 	app.Log(app.LogInfo, "%q", request.URL)
