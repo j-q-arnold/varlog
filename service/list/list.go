@@ -1,19 +1,18 @@
-/* Package list provides code for the /list service endpoint.
- * A summary of the operation: Given a named file
- * or directory, read sub-entries, gather metadata,
- * and return ls-type information for those entries.
- *
- * Parameter 'name=path' provides the partial path, appended
- * to the root (default /var/log).  If the resolved path
- * is a directory, read directory entries.  If the
- * resolved path is a file, give information for that
- * file itself.  An empty/missing value lists the root.
- *
- * Parameter 'filter=text' provides a positive (filter=value)
- * or a negative (filter=-value) filter on the entries.  Entries
- * must match (or not match) the filter to be included in the
- * response.  An empty/missing filter passes all entries.
- */
+// Package list provides code for the /list service endpoint.
+// A summary of the operation: Given a named file
+// or directory, read sub-entries, gather metadata,
+// and return ls-type information for those entries.
+//
+// Parameter 'name=path' provides the partial path, appended
+// to the root (default /var/log).  If the resolved path
+// is a directory, read directory entries.  If the
+// resolved path is a file, give information for that
+// file itself.  An empty/missing value lists the root.
+//
+// Parameter 'filter=text' provides a positive (filter=value)
+// or a negative (filter=-value) filter on the entries.  Entries
+// must match (or not match) the filter to be included in the
+// response.  An empty/missing filter passes all entries.
 package list
 
 import (
@@ -27,17 +26,6 @@ import (
 	"strings"
 	"varlog/service/app"
 )
-
-// Properties used throughout the package.
-// Parameters supplied by the client and values computed
-// during request processing that move from one step
-// to another.
-type properties struct {
-	name       string // name parameter from request
-	filterText string // filter text from request, with '-' stripped
-	filterOmit bool   // true if filter text originally had '-'
-	rootedPath string // full path, e.g., /var/log/dir
-}
 
 // Metadata for the response.  Note the json package only exports
 // public fields.  This uses struct tags to set the key names.
@@ -128,52 +116,6 @@ func collectMetadata(props *app.Properties) (data []*metadata, err error) {
 		m.stripRootPrefix(root)
 	}
 	return data, err
-}
-
-// Retrieve client parameters from the http request.  Extracts
-// the values and updates the properties object that will be used
-// for the remainder of this request's processing.
-func (props *properties) extractParams(request *http.Request) (err error) {
-	if err = request.ParseForm(); err != nil {
-		app.Log(app.LogError, "%s", err)
-		return err
-	}
-
-	// ParseForm above generates url.Values, which is a map from
-	// a string key to an array of strings.  A given key is allowed
-	// to have multiple values, represented in the map's array entries.
-	// Note the code below to check the length of map values and select
-	// only the first array entry.  As an example:
-	//
-	// 		url...?a=v1&a=v2
-	//
-	// generates map["a"] == [ "v1", "v2" ]
-	for key, value := range request.Form {
-		switch key {
-		case app.ParamFilter:
-			if len(value) == 0 {
-				break
-			}
-			props.filterText = value[0]
-			if len(props.filterText) > 0 && props.filterText[0] == '-' {
-				props.filterOmit = true
-				props.filterText = props.filterText[1:]
-			}
-
-		case app.ParamName:
-			if len(value) == 0 {
-				break
-			}
-			props.name = value[0]
-
-		default:
-			// Treat unknown keys as a client error.
-			err = errors.New(fmt.Sprintf("Parameter %q invalid", key))
-			app.Log(app.LogWarning, "%s", err)
-			return err
-		}
-	}
-	return nil
 }
 
 // Generate the return metadata for a directory.

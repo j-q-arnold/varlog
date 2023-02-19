@@ -1,7 +1,6 @@
 package list
 
 import (
-	_ "path"
 	"testing"
 	"varlog/service/app"
 )

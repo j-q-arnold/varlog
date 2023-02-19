@@ -1,21 +1,26 @@
-/* Package read provides code for the /read service endpoint.
- * A summary of the operation: Given a named file,
- * read qualifying lines and present the most-recent
- * first in the response.
- *
- * Parameter 'name=path' provides the partial path, appended
- * to the root (default /var/log).  The resolved path
- * must be a regular file.
- *
- * Parameter 'filter=text' provides a positive (filter=value)
- * or a negative (filter=-value) filter on the lines.  Entries
- * must match (or not match) the filter to be included in the
- * response.  An empty/missing filter passes all lines.
- *
- * Parameter 'count=number' caps the number of lines to include
- * in the response.  A missing/empty/non-positive value returns
- * all lines in the given file.
- */
+// Package read provides code for the /read service endpoint.
+// A summary of the operation: Given a named file,
+// read qualifying lines and present the most-recent
+// first in the response.
+//
+// Parameter 'name=path' provides the partial path, appended
+// to the root (default /var/log).  The resolved path
+// must be a regular file.
+//
+// Parameter 'filter=text' provides a positive (filter=value)
+// or a negative (filter=-value) filter on the lines.  Entries
+// must match (or not match) the filter to be included in the
+// response.  An empty/missing filter passes all lines.
+//
+// Parameter 'count=number' caps the number of lines to include
+// in the response.  A missing/empty/non-positive value returns
+// all lines in the given file.
+//
+// Parameter 'content-disposition=value' tells whether to include
+// a "Content-Disposition" header in the response.  A missing,
+// empty, or 'inline' value uses no explicit header, thus streaming
+// the result in a browser.  An explicit 'attachment' includes a
+// header, which browsers interpret as saving the response in a file.
 package read
 
 import (
@@ -29,7 +34,7 @@ const (
 	// Values to decide whether to use inline or attachment results.
 	// If the line count is specified and "small", use inline.
 	// If the file size is "small", use inline.
-	attachFileSize = 100000
+	attachFileSize  = 100000
 	attachLineCount = 10000
 )
 
@@ -53,11 +58,10 @@ func Handler(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	writeLines(props, writer)
-	fmt.Fprintf(writer, "endpoint: read\n")
-	fmt.Fprintf(writer, "method %s, full path %q, proto %s\n",
-		request.Method, props.RootedPath(), request.Proto)
-	fmt.Fprintf(writer, "Done\n")
+	err = writeLines(props, writer)
+	if err != nil {
+		http.Error(writer, err.Error(), http.StatusBadRequest)
+	}
 }
 
 // selectContentDisposition optionally adds a "Content-Disposition" header to the response.
@@ -68,14 +72,15 @@ func Handler(writer http.ResponseWriter, request *http.Request) {
 // no way to know the filter's likely effect.  And the header needs to be
 // written before the result's actual line count is known.
 // The header to be added:
-//		Content-Disposition: attachment; filename="name"
+//
+//	Content-Disposition: attachment; filename="name"
 func selectContentDisposition(props *app.Properties, writer http.ResponseWriter, file *os.File) {
 	switch props.ParamContentDisposition() {
 	case app.HdrInline:
 		return
 
 	case app.HdrAttachment:
-		break;
+		break
 
 	default:
 		if props.ParamCount() > 0 && props.ParamCount() < attachLineCount {
@@ -99,7 +104,7 @@ func writeLines(props *app.Properties, writer http.ResponseWriter) (err error) {
 	var r *reverser
 	file, err := os.Open(props.RootedPath())
 	if err != nil {
-		app.Log(app.LogError, "Cannot open %s: %s", props.RootedPath(), err.Error())
+		app.Log(app.LogWarning, "Cannot open %s: %s", props.RootedPath(), err.Error())
 		return err
 	}
 	defer file.Close()
@@ -126,6 +131,6 @@ countLabel:
 			}
 		}
 	}
-	app.Log(app.LogDebug, "total lines %d", total)
+	app.Log(app.LogInfo, "Read %q, %d lines", props.RootedPath(), total)
 	return r.err()
 }
