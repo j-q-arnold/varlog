@@ -125,6 +125,14 @@ func (r *reverser) lines() []string {
 	for scanner.Scan() {
 		lines = append(lines, scanner.Text())
 	}
+	// The scanner "should" not raise an error, but it does if the data
+	// are not lines (token too long).  For purposes here, just take the
+	// lines provided (maybe nothing) and record the error to stop this file.
+	// TODO: consider more sophisticated error recovery.
+	if err := scanner.Err(); err != nil {
+		app.Log(app.LogError, "Scanner error ignored (probably reading non-text): %s,", err.Error())
+		r.lastError = err
+	}
 	r.saveLineSuffix(&lines)
 
 	// Reverse the lines
@@ -151,8 +159,8 @@ func (r *reverser) saveLineSuffix(lines *[]string) {
 			s = "\n"
 		}
 		r.lineSuffix = []byte(s)
+		(*lines) = (*lines)[1:]
 	}
-	(*lines) = (*lines)[1:]
 }
 
 // Advances the reverser to the next chunk of the file being read,

@@ -7,7 +7,10 @@
   * [Command Line Options](#command-line-options)
 * [`/var/log` Client](#varlog-client)
 * [Logging](#logging)
-* [Test Data](#test-data)
+* [Testing](#testing)
+  * [Unit Tests](#unit-tests)
+  * [Test Data](#test-data)
+  * [Generating Test Data](#generating-test-data)
 * [Design Issues](#design-issues)
   * [Resource Model](#resource-model)
   * [Service API](#service-api)
@@ -242,7 +245,14 @@ Log messages are written to standard error for this program.
 * `DEBUG`: Temporary notes or other messages.
 
 
-# Test Data
+# Testing
+## Unit Tests
+The code currently has minimal unit tests.
+See `list_test.go` for a brief example of what should be done.
+This test should be extended, and tests for the other
+files should be added.
+
+## Test Data
 The repository has some test files that can be used.
 Typical lines look like the following:
 ```
@@ -263,8 +273,16 @@ These are made to resemble actual log files, with some tweaks:
   confirm data are as expected.
 * Message levels, `ERROR` and such, also are useful filters.
 
+Another set of files hold text but no lines at all.
+The service should work, regardless of the file it reads.
+Trying to read lines from a line-less file should not cause a panic.
+
 A list of the useful files and brief descriptions.
 
+* `alpha-...`: Files of varying length without newlines.
+  The internal line parser deals with tokens up to 64K, but longer
+  runs of text do not work.
+  Read each of the files to see the behavior.
 * `log-0`: An empty file.
 * `log-10`: A file with 10 lines
 * `log-100`: A file with 100 lines
@@ -282,7 +300,7 @@ A few interesting things one can try with these files.
 * Filter on the sequence number, such as `filter=0000`,
   to see one of every 10,000 lines.
 
-A final note about file "chunking".
+A note about file "chunking".
 Reading a file backwards presents a challenge when a line
 spans two chunks.
 The line suffix is read first (chunk N), the line prefix
@@ -309,6 +327,28 @@ see the empty lines.
 One can use the URL query parameter, `content-disposition=attachment`,
 to force a download.
 Then one can open the resulting file directly.
+
+## Generating Test Data
+Two small programs generate test data.
+These can be used to generate additional files,
+or they could be revised to change the nature of data.
+
+Building the programs:
+```
+$ cd $REPO/cmd/genlog
+$ go build .
+$ cd $REPO/cmd/genalpha
+$ go build .
+```
+
+Generating data:
+```
+$ $REPO/cmd/genlog/genlog 10 2>log-10
+$ $REPO/cmd/genalpha/genalpha 5000 >alpha-5k
+```
+
+Note the `genlog` command uses the `log` facility, which writes
+to standard error (thus `2>log-10`).
 
 # Design Issues
 
