@@ -4,6 +4,7 @@
 * [Introduction](#introduction)
 * [`/var/log` Service](#varlog-service)
   * [Building and Running the Service](#building-and-running-the-service)
+  * [Command Line Options](#command-line-options)
 * [`/var/log` Client](#varlog-client)
 * [Logging](#logging)
 * [Test Data](#test-data)
@@ -146,17 +147,17 @@ This section provides the details of each endpoint.
 
 ## Building and Running the Service
 This does not have a fully developed project.
-These instructions assume GO is installed, and you
-have initialized the GO environment variables.
+These instructions assume Go is installed, and you
+have initialized the Go environment variables.
 Here are the minimal steps.
-* The following command use `$REPO` as an environment
+* The following commands use `$REPO` as an environment
   variable holding the path to the `varlog` repository.
-  Example, though you'll need to set this according to your machine.
+  You'll need to adjust the following for your machine.
   ```
   $ export REPO=$HOME/varlog
   ```
 
-* Change directory to the top-level of the git repository.
+* Change directory into the git repository.
   ```
   $ cd $REPO/service/varlog-srv
   $ go build .
@@ -175,6 +176,31 @@ Here are the minimal steps.
   ```
   $ ./varlog-srv -root $REPO/testdata/var/log
   ```
+
+## Command Line Options
+The server has a few command line options that control its behavior.
+The default configuration would work on a typical linux machine,
+but the following change behavior in useful ways for testing and development.
+
+* `-port NUMBER` \
+  Sets the port on which the server listens.
+  Default is 8000, but this might be busy on some machines.
+* `-root PATH` \
+  Sets the root for the log file directory.
+  This was shown above to use test data in the repository.
+  Having only the real `/var/log` for test input is not satisfactory.
+* `-chunk SIZE` \
+  The service assumes some log files might be too big to read into memory.
+  It thus reads log files in chunks, starting at the end of the file.
+  Handling lines that cross chunk boundaries is the primary complication
+  of the code.  This parameter controls that internal chunk size to test
+  boundary conditions.  It is possible to run the service with `-chunk=1`,
+  though that would be inadvisable for production.
+  In this edge case condition, every line spans a chunk boundary,
+  and every edge condition is forced to happen.
+
+  Try running the service with various chunk sizes.  The behavior
+  should be identical, regardless of the current size.
 
 # `/var/log` Client
 
@@ -217,8 +243,44 @@ Log messages are written to standard error for this program.
 
 
 # Test Data
+The repository has some test files that can be used.
+Typical lines look like the following:
+```
+2023/02/16 07:40:46 aaaaa          0   DEBUG abcde fghij klmno pqrst uvwxy
+2023/02/16 07:40:46 bbbbb          1    INFO abcde fghij klmno pqrst uvwxy
+2023/02/16 07:40:46 ccccc          2 WARNING abcde fghij klmno pqrst uvwxy
+2023/02/16 07:40:46 ddddd          3   ERROR abcde fghij klmno pqrst uvwxy
+2023/02/16 07:40:46 eeeee          4   DEBUG abcde fghij klmno pqrst uvwxy
+```
 
+These are made to resemble actual log files, with some tweaks:
+* All lines are the same length.  This is not realistic, but any
+  problems with the output are easy to spot.
+* Application tags, `aaaaa` and such, can be filtered.  One might
+  Want to retrieve only lines related to a specific application.
+* Every line in the file has a unique sequence number, starting at zero.
+  When filtering lines or counting, one can use the sequence number to
+  confirm data are as expected.
+* Message levels, `ERROR` and such, also are useful filters.
 
+A list of the useful files and brief descriptions.
+
+* `log-0`: An empty file.
+* `log-10`: A file with 10 lines
+* `log-100`: A file with 100 lines
+* `log-1K`: A file with 1000 lines
+* `log-10K`: A file with 10,000 lines
+* `log-1M`: A file with 1,000,000 lines.
+* `log-nl`: A file with 14 lines, some empty, to use for
+  "chunking" exercises.  More on this below.
+
+A few interesting things one can try with these files.
+* Filter on the application: `aaaaa`, `bbbbb`, etc.
+* Filter on the message level: `INFO`, `ERROR`, etc.
+* Try positive and negative filters.
+* Use `count=n` to limit the lines returned.
+* Filter on the sequence number, such as `filter=0000`,
+  to see one of every 10,000 lines.
 
 # Design Issues
 
