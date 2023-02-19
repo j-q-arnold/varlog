@@ -271,7 +271,7 @@ A list of the useful files and brief descriptions.
 * `log-1K`: A file with 1000 lines
 * `log-10K`: A file with 10,000 lines
 * `log-1M`: A file with 1,000,000 lines.
-* `log-nl`: A file with 14 lines, some empty, to use for
+* `log-nl`: A file with a few lines, some empty, to use for
   "chunking" exercises.  More on this below.
 
 A few interesting things one can try with these files.
