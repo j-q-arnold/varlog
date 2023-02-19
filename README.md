@@ -3,7 +3,7 @@
 # Table of Contents
 * [Introduction](#introduction)
 * [`/var/log` Service](#varlog-service)
-  * [Running the Service](#running-the-service)
+  * [Building and Running the Service](#building-and-running-the-service)
 * [`/var/log` Client](#varlog-client)
 * [Logging](#logging)
 * [Design Issues](#design-issues)
@@ -24,7 +24,7 @@ act on the given name:
 * `list`: Given a file or directory, list the children in the manner
   of the Unix `ls` command (sorted with file metadata).
   Listing a file gives the file itself.
-  Listing a directory gives entries under that directory.
+  Listing a directory gives entries directly under that directory.
 
 The `varlog` service is a demonstration program.
 See [Design Issues](#design-issues) below for a discussion of
@@ -76,9 +76,9 @@ This section provides the details of each endpoint.
       against this limit.
       If this parameter is non-positive or not present, all qualifying
       lines appear in the response body.
-    * `content-disposition=`_value_
+    * `content-disposition=`_value_ \
       Optional.
-      This gives the option of specifying how to prepare the output:
+      This specifies how to prepare the output:
       to show `inline` or to save as a download `attachment`.
       If omitted or empty, the server decides, based on the expected
       size of the results.  Small results are shown inline; large results
@@ -103,7 +103,7 @@ This section provides the details of each endpoint.
   * Query Parameters
     * `name=`_path_ \
       Optional.
-      Specifies the entry to be read.  The _path_ value is used to construct
+      Specifies the entry to be listed.  The _path_ value is used to construct
       the full path name as `/var/log/`_path_.
       If this `name` parameter is empty or not present, the base directory
       `/var/log` is used as the full path name.
@@ -113,7 +113,7 @@ This section provides the details of each endpoint.
       appears as the single entry in the response.
       Note that _path_ can contain multiple levels, giving full access to the
       `/var/log` directory tree.  For example, if _path_ has the value
-      `dir1/dir2/file-abc`, the full path to be read is `/var/log/dir1/dir2/file-abc`.
+      `dir1/dir2/file-abc`, the full path to be listed is `/var/log/dir1/dir2/file-abc`.
       The _path_ value may not use `..` to escape the `/var/log` tree.
     * `filter=`_text_ \
       `filter=`_-text_ \
@@ -133,7 +133,7 @@ This section provides the details of each endpoint.
     Response objects have the following name/value pairs.
     * `"name"`.  This key's value gives the name of the entry, relative to
       `/var/log`.  For example, if the full path of an entry is
-      `/var/log/dir/file`, the key's value would be `dir/file`.
+      `/var/log/dir/file`, the key's value would be `"dir/file"`.
     * `"type"`.  This key's value indicates the entry type: `"file"` for a
       regular file and `"dir"` for a directory.
       Other types of entries are omitted from the response.
@@ -143,7 +143,34 @@ This section provides the details of each endpoint.
 	    https://en.wikipedia.org/wiki/List_of_HTTP_status_codes
     ) or similar references for details.
 
-## Running the Service
+## Building and Running the Service
+This does not have a fully developed project.
+These instructions assume GO is installed, and you
+have initialized the GO environment variables.
+Here are the minimal steps.
+* The following command use `$REPO` as an environment
+  variable holding the path to the `varlog` repository.
+  Example, though you'll need to set this according to your machine.
+  ```
+  export REPO=$HOME/varlog
+  ```
+
+* Change directory to the top-level of the git repository.
+  ```
+  $ cd service/varlog-srv
+  $ go build .
+  ```
+  This build the executable: `varlog-srv` (or `varlog-srv.exe` for Windows).
+
+* Run the program.  This defaults to listening on port 8000, but you
+  can change that if another server is listening there.
+  ```
+  $ ./varlog-srv -help	# to see a usage message
+  $ ./varlog-srv	# to start the service
+  ```
+
+* If you are running on Windows or want to use local log files,
+  redirect the root to
 
 # `/var/log` Client
 
