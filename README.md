@@ -135,10 +135,10 @@ This section provides the details of each endpoint.
   * Response.
     The response is a JSON array of objects.
     The response array can be empty, such as when a directory has no children.
-    Response objects have the following name/value pairs.
+    Response objects have the following key/value pairs.
     * `"name"`.  This key's value gives the name of the entry, relative to
       `/var/log`.  For example, if the full path of an entry is
-      `/var/log/dir/file`, the key's value would be `"dir/file"`.
+      `/var/log/dir/file`, the `"name"` key's value would be `"dir/file"`.
     * `"type"`.  This key's value indicates the entry type: `"file"` for a
       regular file and `"dir"` for a directory.
       Other types of entries are omitted from the response.
