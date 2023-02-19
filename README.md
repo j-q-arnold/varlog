@@ -32,6 +32,7 @@ act on the given name:
   Listing a directory gives entries directly under that directory.
 
 The `varlog` service is a demonstration program.
+See [`take_home_4.pdf`](take_home_4.pdf) for the actual specification.
 See [Design Issues](#design-issues) below for a discussion of
 how one might revise the program for production use.
 
@@ -343,6 +344,7 @@ $ go build .
 
 Generating data:
 ```
+$ cd $REPO/testdata/var/log
 $ $REPO/cmd/genlog/genlog 10 2>log-10	# log file, 10 lines
 $ $REPO/cmd/genalpha/genalpha 5000 >alpha-5k	# 5K chars, no lines
 ```
@@ -353,6 +355,7 @@ to standard error (thus `2>log-10`).
 For testing large files, use `genlog` to create a suitable file.
 Because of the file size, this is not in git.
 ```
+$ cd $REPO/testdata/var/log
 $ $REPO/cmd/genlog/genlog 50000000 2>log-50M	# log file, 50M lines
 ```
 This will take a few minutes to run and create a 3.7GB file.
