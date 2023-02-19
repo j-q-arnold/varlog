@@ -273,7 +273,7 @@ These are made to resemble actual log files, with some tweaks:
   confirm data are as expected.
 * Message levels, `ERROR` and such, also are useful filters.
 
-Another set of files hold text but no lines at all.
+Other files hold text but no lines at all.
 The service should work, regardless of the file it reads.
 Trying to read lines from a line-less file should not cause a panic.
 
@@ -281,7 +281,7 @@ A list of the useful files and brief descriptions.
 
 * `alpha-...`: Files of varying length without newlines.
   The internal line parser deals with tokens up to 64K, but longer
-  runs of text do not work.
+  runs of text do not parse.
   Read each of the files to see the behavior.
 * `log-0`: An empty file.
 * `log-10`: A file with 10 lines
