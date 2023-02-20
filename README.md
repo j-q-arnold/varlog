@@ -211,7 +211,7 @@ but the options change behavior in useful ways for testing and development.
 A web browser can be used to exercise the service.
 Some example addresses follow, assuming the browser runs
 on the same machine as the service.
-This also assume you have started the service as above,
+This also assumes you have started the service as above,
 using the repository's test data.
 See [Test Data](#test-data) below for details.
 
