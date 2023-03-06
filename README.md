@@ -215,23 +215,37 @@ This also assumes you have started the service as above,
 using the repository's test data.
 See [Test Data](#test-data) below for details.
 
-* `http://localhost:8000/list` \
+* [`http://localhost:8000/list`](
+	http://localhost:8000/list
+  ) \
   List all the files and directories directly under `/var/log`.
-* `http://localhost:8000/list?filter=log` \
+* [`http://localhost:8000/list?filter=log`](
+	http://localhost:8000/list?filter=log`
+  ) \
   List all the files and directories directly under `/var/log`
   that have `log` in the name.
-* `http://localhost:8000/list?filter=-log` \
+* [`http://localhost:8000/list?filter=-log`](
+	http://localhost:8000/list?filter=-log
+  ) \
   List all the files and directories directly under `/var/log`
   that do not have `log` in the name.
-* `http://localhost:8000/read?name=log-100&filter=ERROR&count=10` \
+* [`http://localhost:8000/read?name=log-100&filter=ERROR&count=10`](
+	http://localhost:8000/read?name=log-100&filter=ERROR&count=10
+  ) \
   Read the 10 latest `ERROR` messages from `log-100`.
-* `http://localhost:8000/read?name=log-100&filter=-INFO&count=10` \
+* [`http://localhost:8000/read?name=log-100&filter=-INFO&count=10`](
+	http://localhost:8000/read?name=log-100&filter=-INFO&count=10
+  ) \
   Similar to the previous example, except this allows lines _except_
   the `INFO` entries.
-* `http://localhost:8000/read?name=log-1M&count=10` \
+* [`http://localhost:8000/read?name=log-1M&count=10`](
+	http://localhost:8000/read?name=log-1M&count=10
+  ) \
   In this example, `log-1M` has 1 million lines (75MB file size).
   This caps the line count at 10 and results stream to the browser.
-* `http://localhost:8000/read?name=log-1M` \
+* [`http://localhost:8000/read?name=log-1M`](
+	http://localhost:8000/read?name=log-1M
+  ) \
   This example also uses `log-1M` but requests the entire file.
   The server automatically applies a `Content-Disposition` header to
   download a file instead of displaying inline.
