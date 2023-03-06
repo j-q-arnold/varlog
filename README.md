@@ -220,7 +220,7 @@ See [Test Data](#test-data) below for details.
   ) \
   List all the files and directories directly under `/var/log`.
 * [`http://localhost:8000/list?filter=log`](
-	http://localhost:8000/list?filter=log`
+	http://localhost:8000/list?filter=log
   ) \
   List all the files and directories directly under `/var/log`
   that have `log` in the name.
