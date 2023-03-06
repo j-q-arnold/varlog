@@ -282,7 +282,7 @@ These are made to resemble actual log files, with some tweaks:
 * All lines are the same length.  This is not realistic, but any
   problems with the output are easy to spot.
 * Application tags, `aaaaa` and such, can be filtered.  One might
-  Want to retrieve only lines related to a specific application.
+  want to retrieve only lines related to a specific application.
 * Every line in the file has a unique sequence number, starting at zero.
   When filtering or counting lines, one can use the sequence number to
   confirm data are as expected.
